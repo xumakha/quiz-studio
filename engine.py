@@ -7,7 +7,7 @@ import re
 import subprocess
 import tempfile
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import edge_tts
@@ -218,12 +218,20 @@ class Renderer:
         return h * 3600 + m * 60 + s
 
     def segment(self, image, output, seconds, audio=None):
+        # Match PCM samples to the exact video-frame duration. Encoding AAC for
+        # every segment adds encoder priming/padding at each countdown join.
+        frames = math.ceil(seconds * 30)
+        samples = frames * 1470  # 44100 Hz / 30 fps
         args = ["-loop", "1", "-framerate", "30", "-i", image]
         args += ["-i", audio] if audio else ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo"]
-        self.run([*args, "-t", f"{seconds:.3f}", "-vf", "format=yuv420p", "-af", "apad", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-r", "30", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-map", "0:v:0", "-map", "1:a:0", output])
+        self.run([*args, "-t", f"{frames / 30:.9f}", "-vf", "format=yuv420p", "-af",
+                  f"aresample=44100,apad,atrim=end_sample={samples},asetpts=N/SR/TB",
+                  "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-r", "30",
+                  "-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2", "-map", "0:v:0", "-map", "1:a:0", output])
 
     def render(self, title, rows, output):
-        settings = self.settings
+        from video_themes import video_template
+        settings = replace(self.settings, template=video_template(rows, title, self.settings.template))
         destination = Path(output).resolve()
         destination.parent.mkdir(parents=True, exist_ok=True)
         total_steps = len(rows) * (settings.countdown + 4) + 2 + bool(settings.music)
@@ -254,7 +262,7 @@ class Renderer:
                             update(f"{prefix}: dựng đếm ngược {remaining} giây…")
                             picture = directory / f"{number}-count-{remaining}.png"
                             frame(row, number, len(rows), title, settings, countdown=remaining).save(picture)
-                            video = picture.with_suffix(".mp4")
+                            video = picture.with_suffix(".mov")
                             self.segment(picture, video, 1)
                             segments.append(video)
                             update(f"{prefix}: đã dựng đếm ngược {remaining} giây", increment=1)
@@ -269,23 +277,30 @@ class Renderer:
                     update(f"{prefix}: dựng video {label}…", increment=1)
                     picture = directory / f"{number}-{phase}.png"
                     frame(row, number, len(rows), title, settings, reveal=phase == "answer").save(picture)
-                    video = picture.with_suffix(".mp4")
+                    video = picture.with_suffix(".mov")
                     self.segment(picture, video, duration, audio if settings.speech else None)
                     segments.append(video)
                     update(f"{prefix}: đã dựng {label}", increment=1)
             update("Ghép các câu hỏi và hoàn thiện MP4…")
             listing = directory / "segments.txt"
             listing.write_text("\n".join(f"file '{p.name}'" for p in segments), encoding="utf-8")
-            joined = directory / "joined.mp4"
-            self.run(["-f", "concat", "-safe", "0", "-i", listing, "-c", "copy", "-movflags", "+faststart", joined])
+            joined = directory / "joined.mov"
+            self.run(["-f", "concat", "-safe", "0", "-i", listing, "-c", "copy", joined])
             update("Đã ghép video", increment=1)
+            finished = directory / "finished.mp4"
             if settings.music:
                 update("Đang trộn nhạc nền…")
-                mixed = directory / "mixed.mp4"
-                self.run(["-i", joined, "-stream_loop", "-1", "-i", settings.music, "-filter_complex", f"[1:a]volume={settings.music_volume}[bg];[0:a][bg]amix=inputs=2:duration=first:normalize=0[a]", "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-movflags", "+faststart", mixed])
-                joined = mixed
+                self.run(["-i", joined, "-stream_loop", "-1", "-i", settings.music, "-filter_complex",
+                          f"[0:a]asetpts=N/SR/TB[voice];[1:a]aresample=44100,asetpts=N/SR/TB,volume={settings.music_volume}[bg];"
+                          "[voice][bg]amix=inputs=2:duration=first:normalize=0:dropout_transition=0[a]",
+                          "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac",
+                          "-ar", "44100", "-ac", "2", "-movflags", "+faststart", finished])
                 update("Đã trộn nhạc nền", increment=1)
+            else:
+                self.run(["-i", joined, "-map", "0:v", "-map", "0:a", "-c:v", "copy",
+                          "-af", "asetpts=N/SR/TB", "-c:a", "aac", "-ar", "44100", "-ac", "2",
+                          "-movflags", "+faststart", finished])
             self.check()
-            os.replace(joined, destination)
+            os.replace(finished, destination)
         self.log(f"Hoàn tất: {destination}")
         self.progress(100, f"Hoàn tất: {destination}")

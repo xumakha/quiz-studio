@@ -13,8 +13,8 @@ from tkinter import filedialog, messagebox, ttk
 
 from PIL import ImageTk
 from engine import Cancelled, Renderer, Settings, VOICES, frame, parse_questions
-from preferences import BackgroundStore
-from video_themes import TEMPLATES, detect_template
+from preferences import BackgroundStore, UserSettingsStore, USER_DEFAULTS
+from video_themes import TEMPLATES, video_template
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 
@@ -35,15 +35,22 @@ class App(tk.Tk):
         self.background = saved_background["background"]
         self.background_name = saved_background["background_name"]
         self.dim_save_timer = None
-        self.music = ""
+        self.settings_save_timer = None
+        self.user_store = UserSettingsStore(self.background_store.directory)
+        saved_settings = self.user_store.load()
+        self.music = saved_settings["music"]
+        self.music_name = saved_settings["music_name"]
         self.last_output = None
         self.job_exporting = False
         from modern_ui import build_ui
-        build_ui(self, saved_background)
+        build_ui(self, {**saved_background, **saved_settings})
+        for name in USER_DEFAULTS:
+            getattr(self, name).trace_add("write", self.user_settings_changed)
         self.text.insert("1.0", (ROOT / "examples/questions.json").read_text(encoding="utf-8"))
         self.validate()
-        if self.background_store.warning:
-            self.status.configure(text=self.background_store.warning)
+        warnings = [store.warning for store in (self.background_store, self.user_store) if store.warning]
+        if warnings:
+            self.status.configure(text="\n".join(warnings))
         self.protocol("WM_DELETE_WINDOW", self.close)
         self.after(100, self.poll)
 
@@ -51,6 +58,23 @@ class App(tk.Tk):
         if self.rows:
             self.selected.set(max(1, min(len(self.rows), self.selected.get() + direction)))
             self.show_preview()
+
+    def user_settings(self):
+        return {name: getattr(self, name).get() for name in USER_DEFAULTS}
+
+    def user_settings_changed(self, *args):
+        if self.settings_save_timer:
+            self.after_cancel(self.settings_save_timer)
+        self.settings_save_timer = self.after(350, self.save_user_settings)
+
+    def save_user_settings(self):
+        self.settings_save_timer = None
+        try:
+            self.user_store.save(self.user_settings())
+            return True
+        except (OSError, ValueError, tk.TclError) as error:
+            self.status.configure(text=f"Không lưu được cài đặt: {error}")
+            return False
 
     def json_changed(self, event=None):
         if not self.text.edit_modified():
@@ -120,9 +144,11 @@ class App(tk.Tk):
         try:
             index = max(0, min(self.selected.get() - 1, len(self.rows) - 1))
             self.selected.set(index + 1)
-            theme = detect_template(self.rows[index], self.quiz_title, self.settings().template)
+            settings = self.settings()
+            theme = video_template(self.rows, self.quiz_title, settings.template)
+            settings.template = theme
             self.template_label.configure(text={"math": "TOÁN · XANH BẠC HÀ", "english": "TIẾNG ANH · XANH SÁNG", "classic": "QUIZ · NHIỀU MÀU"}[theme])
-            picture = frame(self.rows[index], index + 1, len(self.rows), self.quiz_title, self.settings(), reveal=self.reveal.get(), countdown=self.countdown.get())
+            picture = frame(self.rows[index], index + 1, len(self.rows), self.quiz_title, settings, reveal=self.reveal.get(), countdown=self.countdown.get())
             picture.thumbnail((180, 320))
             self.preview_image = ImageTk.PhotoImage(picture)
             self.preview.configure(image=self.preview_image)
@@ -160,15 +186,18 @@ class App(tk.Tk):
                     self.background_name = saved["background_name"]
                     self.status.configure(text="Đã lưu ảnh nền. Lần mở app tiếp theo sẽ tự sử dụng ảnh này.")
                 else:
-                    setattr(self, kind, path)
+                    Renderer(Settings()).run(["-i", path, "-t", "0.1", "-map", "0:a:0", "-f", "null", "-"])
+                    saved = self.user_store.select_music(path, self.user_settings())
+                    self.music, self.music_name = saved["music"], saved["music_name"]
+                    self.status.configure(text="Đã lưu nhạc nền. Lần mở app tiếp theo sẽ tự sử dụng nhạc này.")
             except Exception as error:
-                messagebox.showerror("Không lưu được ảnh nền", str(error))
+                messagebox.showerror("Không lưu được ảnh nền" if kind == "background" else "Không lưu được nhạc nền", str(error))
                 return
             self.update_media_label()
             self.show_preview()
 
     def update_media_label(self):
-        self.media_label.configure(text=f"Ảnh: {self.background_name or 'Chưa chọn'}\nNhạc: {Path(self.music).name if self.music else 'Chưa chọn'}")
+        self.media_label.configure(text=f"Ảnh: {self.background_name or 'Chưa chọn'}\nNhạc: {self.music_name or 'Chưa chọn'}")
 
     def background_dim_changed(self, *args):
         self.show_preview()
@@ -190,11 +219,13 @@ class App(tk.Tk):
     def clear_media(self):
         try:
             self.background_store.clear(self.background_dim.get())
+            self.user_store.clear_music(self.user_settings())
         except Exception as error:
             messagebox.showerror("Không lưu được thay đổi", str(error))
             return
         self.background = self.music = ""
         self.background_name = ""
+        self.music_name = ""
         self.update_media_label()
         self.show_preview()
 
@@ -316,6 +347,10 @@ class App(tk.Tk):
         if self.dim_save_timer:
             self.after_cancel(self.dim_save_timer)
             self.save_background_dim()
+        if self.settings_save_timer:
+            self.after_cancel(self.settings_save_timer)
+        if not self.save_user_settings():
+            return
         self.destroy()
 
 

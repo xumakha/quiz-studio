@@ -40,17 +40,17 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     centered(f"CÂU {number:02d} / {total:02d}", (435, 457, 645, 492), 25, "#58748c")
 
     # Only text in the question area: no fill, shadow or surrounding border.
-    centered(row["question"], (120, 555, 960, 875), 56)
+    centered(row["question"], (120, 515, 960, 725), 56)
 
     colors = ["#198942", "#177af1", "#f09a05", "#8851ef", "#ed5876", "#139aa9"]
     count = len(row["options"])
     columns = 1 if count == 2 else 2
     rows = math.ceil(count / columns)
-    height = min(216, (530 - (rows-1)*26) // rows)
+    height = min(160, (360 - (rows-1)*24) // rows)
     width = 920 if columns == 1 else 444
     for index, option in enumerate(row["options"]):
         x = 80 + (index % columns) * 476
-        y = 955 + (index // columns) * (height + 26)
+        y = 760 + (index // columns) * (height + 24)
         color = colors[index]
         correct = reveal and index == row["answer_index"]
         draw.rounded_rectangle((x, y+14, x+width, y+height+14), 30, fill=color)
@@ -71,20 +71,20 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
                 draw.ellipse((px-3, py-3, px+3, py+3), fill="white")
 
     if reveal:
-        draw.rounded_rectangle((80, 1520, 1000, 1750), 27, fill=(255, 255, 255, 240), outline="#8ac9a0", width=3)
-        draw.text((110, 1545), "ĐÁP ÁN " + chr(65+row["answer_index"]) + " · GIẢI THÍCH", font=font(32, True), fill="#198942")
+        draw.rounded_rectangle((80, 1160, 1000, 1400), 27, fill=(255, 255, 255, 240), outline="#8ac9a0", width=3)
+        draw.text((110, 1180), "ĐÁP ÁN " + chr(65+row["answer_index"]) + " · GIẢI THÍCH", font=font(32, True), fill="#198942")
         explanation = row["explanation"] or "Đáp án đúng: " + row["options"][row["answer_index"]]
-        centered(explanation, (110, 1600, 970, 1722), 31, bold=False)
+        centered(explanation, (110, 1235, 970, 1378), 31, bold=False)
     elif countdown is not None:
-        draw.rounded_rectangle((80, 1530, 1000, 1700), 28, fill=(255, 255, 255, 230))
-        draw.ellipse((110, 1558, 222, 1670), fill="#ffdb4f")
-        draw.text((166, 1614), str(countdown), font=font(65, True), anchor="mm", fill="#bf6515")
-        draw.text((255, 1571), "BẠN CHỌN ĐÁP ÁN NÀO?", font=font(34, True), fill=ink)
-        draw.rounded_rectangle((255, 1638, 957, 1654), 8, fill="#dfeaf5")
+        draw.rounded_rectangle((80, 1160, 1000, 1330), 28, fill=(255, 255, 255, 230))
+        draw.ellipse((110, 1188, 222, 1300), fill="#ffdb4f")
+        draw.text((166, 1244), str(countdown), font=font(65, True), anchor="mm", fill="#bf6515")
+        draw.text((255, 1201), "BẠN CHỌN ĐÁP ÁN NÀO?", font=font(34, True), fill=ink)
+        draw.rounded_rectangle((255, 1268, 957, 1284), 8, fill="#dfeaf5")
         fraction = max(0, min(1, countdown / max(1, settings.countdown)))
         if fraction:
-            draw.rounded_rectangle((255, 1638, 255+702*fraction, 1654), 8, fill=blue)
+            draw.rounded_rectangle((255, 1268, 255+702*fraction, 1284), 8, fill=blue)
     if settings.watermark_enabled and settings.brand.strip():
-        draw.rounded_rectangle((80, 1815, 1000, 1880), 20, fill=(255, 255, 255, 225))
-        centered(settings.brand, (110, 1826, 970, 1869), 27, "#526d83")
+        draw.rounded_rectangle((80, 1420, 1000, 1470), 20, fill=(255, 255, 255, 225))
+        centered(settings.brand, (110, 1428, 970, 1462), 27, "#526d83")
     return image.resize((settings.width, settings.height), Image.Resampling.LANCZOS)

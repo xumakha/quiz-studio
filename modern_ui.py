@@ -5,6 +5,7 @@ import customtkinter as ctk
 from engine import VOICES
 from video_themes import TEMPLATES
 from icons import icon, IconTabs
+from preferences import USER_DEFAULTS
 
 BG, INK, MUTED, ACCENT, LINE = "#f6f8fa", "#25333d", "#7c8793", "#218c7c", "#e3e8ed"
 
@@ -74,6 +75,8 @@ def build_ui(app, saved):
     app.music_volume = tk.IntVar(value=12)
     app.background_dim = tk.IntVar(value=saved["background_dim"])
     app.selected, app.reveal = tk.IntVar(value=1), tk.BooleanVar(value=False)
+    for name, default in USER_DEFAULTS.items():
+        getattr(app, name).set(saved.get(name, default))
 
     header = box(app, "white", corner_radius=0, height=76)
     header.pack(fill="x")
@@ -170,14 +173,15 @@ def build_ui(app, saved):
     divider(background)
     section(background, "Nhạc nền")
     button(background, "Chọn nhạc nền", lambda: app.choose_media("music"),symbol="music").pack(fill="x", pady=10)
+    label(background, "Nhạc được sao chép và tự lưu cho lần mở sau.", 10, MUTED, wraplength=220).pack(anchor="w", pady=5)
     slider(background, "Âm lượng nhạc", app.music_volume, 0, 100, "%")
     app.media_label = ttk.Label(background, wraplength=220, foreground=MUTED)
     app.media_label.pack(anchor="w", pady=12)
     app.update_media_label()
     button(background, "Bỏ ảnh / nhạc nền", app.clear_media,symbol="x").pack(fill="x", pady=10)
     section(video, "Thông tin video")
-    combo(video, "Mẫu giao diện video", app.video_template, list(TEMPLATES))
-    label(video, "Tự động đổi mẫu theo môn của từng câu.\nCó thể chọn cố định một mẫu cho video.", 10, MUTED, wraplength=220).pack(anchor="w", pady=8)
+    combo(video, "Giao diện cho toàn bộ video", app.video_template, list(TEMPLATES))
+    label(video, "Mỗi video chỉ dùng một giao diện.\nTự động chọn theo môn của câu đầu tiên; bạn có thể đổi mẫu tại đây.", 10, MUTED, wraplength=220).pack(anchor="w", pady=8)
     toggle(video, "Hiện watermark ở đáy video", app.watermark_enabled, app.update_watermark)
     label(video, "Chữ watermark", 12).pack(anchor="w", pady=(12, 6))
     app.watermark_entry = ctk.CTkEntry(video, textvariable=app.brand, height=36, corner_radius=6,
@@ -256,3 +260,4 @@ def build_ui(app, saved):
     app.background_dim.trace_add("write", app.background_dim_changed)
     app.brand.trace_add("write", lambda *args: app.show_preview())
     app.video_template.trace_add("write", lambda *args: app.show_preview())
+    app.update_watermark()
