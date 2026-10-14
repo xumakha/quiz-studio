@@ -1,0 +1,33 @@
+# Quiz Studio cho Windows
+
+Repository chứa mã nguồn và JSON mẫu; không chứa thư viện cài đặt, video xuất hay bản `.exe`. Sau khi clone, cài Python 3.11 trở lên rồi chạy `run.bat` để cài thư viện và mở app từ mã nguồn. Chạy `build.bat` để tạo bản `.exe` tại `release-clear/QuizStudio`.
+
+Nhấp đúp **Mo-QuizStudio.bat** để mở bản mới nhất tại `release-clear/QuizStudio/QuizStudio.exe`. Khi chuyển sang máy khác, sao chép cả thư mục `release-clear/QuizStudio`, bao gồm `_internal`. Không chạy file trong thư mục `build`: đó là file đóng gói trung gian.
+
+## Tạo video
+
+1. Mở JSON trong app; có mẫu tại `examples/questions.json` và nội dung tiếng Anh tại `examples/tieng-anh-co-ban-6-phut.json`.
+2. Chỉnh giọng Việt/Anh, tốc độ, cao độ và thời gian suy nghĩ trong tab Giọng đọc. Đoạn `[en]...[/en]` dùng giọng tiếng Anh riêng.
+3. Trong tab Nền, chọn ảnh/nhạc và chỉnh mức làm tối, âm lượng. Ảnh nền được sao chép và nhớ tại `%LOCALAPPDATA%\QuizStudio` để lần sau tự nạp lại. Bỏ ảnh / nhạc nền cũng xóa lựa chọn ảnh đã lưu.
+4. Trong tab Video, chọn mẫu tự động theo môn học hoặc cố định Toán, Tiếng Anh, Quiz nhiều màu. Bật/tắt watermark và sửa chữ; chọn độ phân giải.
+5. Kiểm tra & xem trước, chọn câu và bật hiện đáp án để xem bố cục. Danh sách câu hỏi cho phép chọn nhanh.
+6. Xuất video MP4, theo dõi phần trăm và bước xử lý. Khi hoàn tất, Mở trong thư mục chọn sẵn file video. Nút Hủy dừng tác vụ mà không ghi đè file đích chưa hoàn tất.
+
+Video H.264/AAC, 30 fps, 9:16, 720×1280 hoặc 1080×1920. Một file chứa toàn bộ câu hỏi theo thứ tự: đọc câu hỏi/lựa chọn → đếm ngược → đáp án/giải thích. Không có tấm nền xám lớn bao quanh nội dung; dấu tick được vẽ bằng nét.
+
+Giọng Google Việt/Anh là mặc định và cần Internet. Giọng Edge nam/nữ cũng có trong danh sách nhưng có thể gặp lỗi kết nối dịch vụ. Bỏ chọn Tạo giọng đọc để xuất offline. Chưa có nhái giọng hoặc tự đăng mạng xã hội.
+
+## JSON
+
+Nhận mảng câu hỏi hoặc `{ "title": "...", "questions": [...] }`. `question`, `options` (2–6 chuỗi) và đáp án là bắt buộc. `answer` nhận A–F, nguyên văn lựa chọn hoặc số nguyên từ **0**; cũng nhận `correct_answer`/`answer_index`. `explanation` không bắt buộc. `subject` và `lesson` giúp tự nhận diện môn học; sau đó xét tiêu đề và thẻ `[en]`. Môn chưa nhận diện dùng mẫu Quiz nhiều màu. Mẫu này cũng nhận `grade`/`class` để hiển thị lớp.
+
+## Mã nguồn và đóng gói
+
+- `app.py`, `modern_ui.py`, `icons.py`: giao diện và thao tác app.
+- `engine.py`, `video_themes.py`, `video_classic.py`: giọng đọc, xuất MP4 và các mẫu video.
+- `preferences.py`: lưu ảnh nền.
+- `requirements.txt`, `.venv`: thư viện chạy từ mã nguồn; `run.bat` hỗ trợ khởi động.
+- `build.bat`: đóng gói bản mới vào `release-clear`; đóng app trước khi đóng gói lại.
+- `test_*.py`: kiểm tra dữ liệu, render, chọn mẫu, watermark và lưu ảnh nền.
+
+Chạy kiểm tra: `.venv\Scripts\python.exe -m unittest discover -v`. Chạy từ mã nguồn cần Python 3.11 trở lên.

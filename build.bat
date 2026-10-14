@@ -1,0 +1,17 @@
+@echo off
+cd /d "%~dp0"
+if not exist ".venv\Scripts\python.exe" (
+  python -m venv .venv
+  if errorlevel 1 exit /b 1
+)
+".venv\Scripts\python.exe" -m pip install -r requirements.txt
+if errorlevel 1 exit /b 1
+".venv\Scripts\python.exe" -m pip install pyinstaller
+if errorlevel 1 exit /b 1
+".venv\Scripts\python.exe" -m PyInstaller --noconfirm --windowed --distpath release-clear --name QuizStudio --collect-all customtkinter --collect-all imageio_ffmpeg --collect-all edge_tts --add-data "examples;examples" app.py
+if errorlevel 1 exit /b 1
+echo.
+echo Dong goi thanh cong. Mo Mo-QuizStudio.bat hoac release-clear\QuizStudio\QuizStudio.exe.
+echo Thu muc build chi chua file trung gian, khong chay exe trong do.
+echo Khi sao chep app, giu nguyen ca thu muc release-clear\QuizStudio va _internal.
+pause

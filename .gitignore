@@ -1,0 +1,11 @@
+.venv/
+archive/
+__pycache__/
+build/
+dist/
+release/
+release-modern/
+release-fixed/
+release-clear/
+*.spec
+outputs/
