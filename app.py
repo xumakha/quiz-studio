@@ -8,6 +8,7 @@ import sys
 import tempfile
 import threading
 import tkinter as tk
+from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
@@ -281,7 +282,8 @@ class App(tk.Tk):
     def export(self):
         if self.busy or not self.validate():
             return
-        path = filedialog.asksaveasfilename(defaultextension=".mp4", initialfile="quiz-shorts.mp4", filetypes=[("Video MP4", "*.mp4")])
+        filename = datetime.now().strftime("%d-%m-%Y-%Hh%M.mp4")
+        path = filedialog.asksaveasfilename(defaultextension=".mp4", initialfile=filename, filetypes=[("Video MP4", "*.mp4")])
         if not path:
             return
         settings, rows, title = self.settings(), list(self.rows), self.quiz_title
