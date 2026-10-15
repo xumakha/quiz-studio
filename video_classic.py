@@ -6,7 +6,7 @@ from branding import add_logo
 
 
 def render_frame(row, number, total, title, settings, reveal=False, countdown=None):
-    from engine import fitted, font, plain
+    from engine import draw_option_text, fitted, font, plain
     ink, blue = "#28323d", "#147af4"
     image = Image.new("RGB", (1080, 1920), "#319fe9")
     if settings.background:
@@ -64,7 +64,7 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
         cx, cy = x+66, y+height/2
         draw.ellipse((cx-radius, cy-radius, cx+radius, cy+radius), fill=color)
         draw.text((cx, cy), chr(65+index), font=font(47 if height>170 else 36, True), anchor="mm", fill="white")
-        centered(option, (x+128, y+22, x+width-22, y+height-22), 55 if columns==2 else 54)
+        draw_option_text(draw, option, (x+128, y+22, x+width-22, y+height-22), 55 if columns==2 else 54, ink)
         if correct:
             draw.rounded_rectangle((x+width-80, y-15, x+width-8, y+32), 14, fill="#198942")
             # Draw the checkmark geometrically: Arial may lack the tick glyph.

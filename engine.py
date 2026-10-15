@@ -102,24 +102,12 @@ def wrap(draw, text, face, width):
     for paragraph in plain(text).split("\n"):
         line = ""
         for word in paragraph.split():
-            # Split long unbroken tokens as well as ordinary words.
-            if draw.textlength(word, font=face) > width:
-                chunks, chunk = [], ""
-                for char in word:
-                    if chunk and draw.textlength(chunk + char, font=face) > width:
-                        chunks.append(chunk)
-                        chunk = ""
-                    chunk += char
-                chunks.append(chunk)
+            candidate = f"{line} {word}".strip()
+            if line and draw.textlength(candidate, font=face) > width:
+                lines.append(line)
+                line = word
             else:
-                chunks = [word]
-            for chunk in chunks:
-                candidate = f"{line} {chunk}".strip()
-                if line and draw.textlength(candidate, font=face) > width:
-                    lines.append(line)
-                    line = chunk
-                else:
-                    line = candidate
+                line = candidate
         lines.append(line)
     return lines
 
@@ -128,9 +116,21 @@ def fitted(draw, text, size, width, max_height, bold=False):
     for value in range(size, 19, -2):
         face = font(value, bold)
         lines = wrap(draw, text, face, width)
-        if len(lines) * (value + 12) <= max_height:
+        if (len(lines) * (value + 12) <= max_height
+                and all(draw.textlength(line, font=face) <= width for line in lines)):
             return face, lines, value + 12
     raise ValueError("Nội dung quá dài để hiển thị rõ trên video. Hãy rút gọn câu hỏi/lựa chọn/giải thích.")
+
+
+def draw_option_text(draw, text, rectangle, size, color):
+    left, top, right, bottom = rectangle
+    face, lines, _ = fitted(draw, text, size, right - left, bottom - top, bold=True)
+    content = "\n".join(lines)
+    # Center the visible glyphs, including accents and descenders, in the text area.
+    bounds = draw.multiline_textbbox((0, 0), content, font=face, spacing=12, align="center")
+    x = (left + right - (bounds[2] - bounds[0])) / 2 - bounds[0]
+    y = (top + bottom - (bounds[3] - bounds[1])) / 2 - bounds[1]
+    draw.multiline_text((x, y), content, font=face, fill=color, spacing=12, align="center")
 
 
 def frame(row, number, total, title, settings, reveal=False, countdown=None):

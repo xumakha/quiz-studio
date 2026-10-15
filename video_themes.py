@@ -26,7 +26,7 @@ def detect_template(row, title="", selected="auto"):
     return "english" if "[en]" in text.lower() else "classic"
 
 def render_frame(row, number, total, title, settings, reveal=False, countdown=None):
-    from engine import fitted, font
+    from engine import draw_option_text, fitted, font
     theme = detect_template(row, title, settings.template)
     if theme == "classic":
         from video_classic import render_frame as classic
@@ -74,7 +74,7 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
         cy=y+height/2
         draw.ellipse((x+22,cy-38,x+98,cy+38),fill=(255,255,255,45) if correct else tone)
         draw.text((x+60,cy),chr(65+i),anchor="mm",font=font(38,True),fill="white")
-        text(option,(x+119,y+20,x+width-20,y+height-20),47,"white" if correct else ink,align="left")
+        draw_option_text(draw,option,(x+119,y+20,x+width-20,y+height-20),47,"white" if correct else ink)
         if correct:
             draw.rounded_rectangle((x+width-57,y-12,x+width-4,y+31),12,fill="#2d654b")
             draw.line([(x+width-46,y+7),(x+width-34,y+19),(x+width-16,y-1)],fill="white",width=6,joint="curve")
