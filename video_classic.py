@@ -2,6 +2,7 @@
 import math
 import re
 from PIL import Image, ImageDraw, ImageOps
+from branding import add_logo
 
 
 def render_frame(row, number, total, title, settings, reveal=False, countdown=None):
@@ -13,6 +14,8 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
             image = ImageOps.fit(ImageOps.exif_transpose(source).convert("RGB"), image.size, method=Image.Resampling.LANCZOS)
         shade = Image.new("RGBA", image.size, (8, 15, 34, round(255 * settings.background_dim / 100)))
         image = Image.alpha_composite(image.convert("RGBA"), shade).convert("RGB")
+    if settings.watermark_enabled:
+        add_logo(image, watermark=True)
     draw = ImageDraw.Draw(image, "RGBA")
 
     def centered(text, rectangle, size, color=ink, bold=True, stroke=0):
@@ -87,4 +90,5 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     if settings.watermark_enabled and settings.brand.strip():
         draw.rounded_rectangle((80, 1420, 1000, 1470), 20, fill=(255, 255, 255, 225))
         centered(settings.brand, (110, 1428, 970, 1462), 27, "#526d83")
+    add_logo(image)
     return image.resize((settings.width, settings.height), Image.Resampling.LANCZOS)

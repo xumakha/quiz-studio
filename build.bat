@@ -8,7 +8,7 @@ if not exist ".venv\Scripts\python.exe" (
 if errorlevel 1 exit /b 1
 ".venv\Scripts\python.exe" -m pip install pyinstaller
 if errorlevel 1 exit /b 1
-".venv\Scripts\python.exe" -m PyInstaller --noconfirm --windowed --distpath release-clear --name QuizStudio --collect-all customtkinter --collect-all imageio_ffmpeg --collect-all edge_tts --add-data "examples;examples" app.py
+".venv\Scripts\python.exe" -m PyInstaller --noconfirm --windowed --distpath release-clear --name QuizStudio --collect-all customtkinter --collect-all imageio_ffmpeg --collect-all edge_tts --add-data "examples;examples" --add-data "assets;assets" app.py
 if errorlevel 1 exit /b 1
 echo.
 echo Dong goi thanh cong. Mo Mo-QuizStudio.bat hoac release-clear\QuizStudio\QuizStudio.exe.

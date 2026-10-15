@@ -3,6 +3,7 @@ import math
 import re
 import unicodedata
 from PIL import Image, ImageDraw, ImageOps
+from branding import add_logo
 
 TEMPLATES = {"Tự động theo môn học": "auto", "Toán · Xanh bạc hà": "math", "Tiếng Anh · Xanh sáng": "english", "Quiz nhiều màu · Mẫu trước": "classic"}
 
@@ -42,6 +43,8 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     if is_math and not settings.background:
         for y in range(0,1920,78): draw.line((0,y,1080,y),fill=(93,135,114,16))
         for x in range(0,1080,78): draw.line((x,0,x,1920),fill=(93,135,114,16))
+    if settings.watermark_enabled:
+        add_logo(image, watermark=True)
     def text(text, rect, size, color=ink, bold=True, align="center"):
         l,t,r,b=rect
         face,lines,step=fitted(draw,text,size,r-l,b-t,bold)
@@ -91,4 +94,5 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     if settings.watermark_enabled and settings.brand.strip():
         draw.rounded_rectangle((144,1420,936,1470),15,fill=(255,255,255,185))
         text(settings.brand,(170,1428,910,1462),26,muted)
+    add_logo(image)
     return image.resize((settings.width,settings.height),Image.Resampling.LANCZOS)
