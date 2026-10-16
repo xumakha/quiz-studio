@@ -11,9 +11,38 @@ from PIL import Image
 
 from engine import Cancelled, Renderer, Settings, frame, parse_questions
 from video_themes import detect_template, video_template
+from branding import CONTENT_OFFSET_Y
 
 
 class EngineTests(unittest.TestCase):
+    def test_answer_speech_only_reads_letter_and_final_follow_prompt(self):
+        _, rows = parse_questions(json.dumps([
+            {"question": "Test?", "options": ["first", "second", "third"],
+             "answer": "C", "explanation": "An explanation that must stay visual."}
+        ] * 2))
+        outro = "Hãy theo dõi một chút english để học thêm một chút tiếng Anh mỗi ngày nhé!"
+        for voice in ["vi-VN-HoaiMyNeural", "en-US-JennyNeural", "google:en"]:
+            spoken = []
+
+            async def capture(text, target, directory, on_part=lambda fraction: None):
+                spoken.append(text)
+
+            def fake_run(args):
+                Path(args[-1]).touch()
+                return ""
+
+            with self.subTest(voice=voice), tempfile.TemporaryDirectory() as directory:
+                renderer = Renderer(Settings(voice=voice, countdown=0, width=180, height=320))
+                with patch.object(renderer, "speech", side_effect=capture), \
+                     patch.object(renderer, "audio_duration", return_value=1), \
+                     patch.object(renderer, "segment"), \
+                     patch.object(renderer, "run", side_effect=fake_run):
+                    renderer.render("Quiz", rows, Path(directory) / "video.mp4")
+                answer = "The answer is C." if voice in ["en-US-JennyNeural", "google:en"] else "Đáp án đúng là C."
+                self.assertEqual(spoken[1], answer)
+                self.assertEqual(spoken[3], f"{answer} {outro}")
+                self.assertEqual(sum(outro in text for text in spoken), 1)
+
     def test_audio_stays_continuous_across_countdown_and_answer(self):
         class OfflineRenderer(Renderer):
             messages = None
@@ -89,9 +118,11 @@ class EngineTests(unittest.TestCase):
                         for phase in [{}, {"reveal": True}, {"countdown": 3}]:
                             with self.subTest(theme=theme, count=count, width=width, phase=phase):
                                 picture = frame(rows[0], 1, 1, "18 CÂU ĐỐ TIẾNG ANH", settings, **phase)
-                                # Leave the lower 22% for the social player's page name and caption.
-                                bottom = picture.crop((0, round(height * .78), width, height))
+                                # Keep the lower 18% clear after moving content down for mobile UI.
+                                bottom = picture.crop((0, round(height * .82), width, height))
                                 self.assertEqual(bottom.tobytes(), Image.new("RGB", bottom.size, color).tobytes())
+                                top = picture.crop((0, 0, width, round(height * .065)))
+                                self.assertEqual(top.tobytes(), Image.new("RGB", top.size, color).tobytes())
 
     def test_mixed_subject_video_uses_one_template_in_every_phase(self):
         title, rows = parse_questions(json.dumps([
@@ -118,7 +149,7 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(detect_template({"subject": "English"}, selected="math"), "math")
     def test_watermark_toggle_removes_the_entire_footer(self):
         title, rows = parse_questions(Path("examples/questions.json").read_text(encoding="utf-8"))
-        area = (0, 1420, 1080, 1470)
+        area = (0, 1420 + CONTENT_OFFSET_Y, 1080, 1470 + CONTENT_OFFSET_Y)
         disabled = frame(rows[0], 1, 2, title, Settings(watermark_enabled=False)).crop(area)
         blank = frame(rows[0], 1, 2, title, Settings(brand=" ")).crop(area)
         self.assertEqual(disabled.tobytes(), blank.tobytes())

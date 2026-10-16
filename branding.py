@@ -4,6 +4,16 @@ from pathlib import Path
 
 from PIL import Image
 
+CONTENT_OFFSET_Y = 96
+
+
+def compose_content(background, content, settings):
+    """Keep the background fixed while moving all video elements below mobile UI."""
+    background = background.convert("RGBA")
+    background.alpha_composite(content, (0, CONTENT_OFFSET_Y))
+    return background.convert("RGB").resize(
+        (settings.width, settings.height), Image.Resampling.LANCZOS)
+
 
 @lru_cache(maxsize=4)
 def _logo(width, height, opacity):
@@ -24,15 +34,15 @@ def _character():
     bounds = character.getbbox()
     if bounds:
         character = character.crop(bounds)
-    character.thumbnail((112, 112), Image.Resampling.LANCZOS)
+    character.thumbnail((124, 124), Image.Resampling.LANCZOS)
     return character
 
 
 def add_logo(image, *, watermark=False):
     """Place branding on the 1080 x 1920 design canvas."""
-    logo = _logo(800, 800, 0.07) if watermark else _logo(112, 100, 1.0)
-    position = ((image.width - logo.width) // 2, (image.height - logo.height) // 2) if watermark else (48, 48)
+    logo = _logo(800, 800, 0.07) if watermark else _logo(132, 118, 1.0)
+    position = ((image.width - logo.width) // 2, (image.height - logo.height) // 2) if watermark else (36, 48)
     image.paste(logo, position, logo)
     if not watermark:
         character = _character()
-        image.paste(character, (image.width - character.width - 48, 48), character)
+        image.paste(character, (image.width - character.width - 36, 48), character)

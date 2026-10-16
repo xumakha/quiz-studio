@@ -253,9 +253,11 @@ class Renderer:
                 text = row["question"]
                 if settings.read_options:
                     text += ". " + ". ".join(f"{chr(65 + i)}. {x}" for i, x in enumerate(row["options"]))
-                answer_text = f"Đáp án {chr(65 + row['answer_index'])}. {row['options'][row['answer_index']]}. {row['explanation']}"
+                answer_text = f"Đáp án đúng là {chr(65 + row['answer_index'])}."
                 if settings.voice.startswith("en") or settings.voice == "google:en":
-                    answer_text = f"The answer is {chr(65 + row['answer_index'])}. {row['options'][row['answer_index']]}. {row['explanation']}"
+                    answer_text = f"The answer is {chr(65 + row['answer_index'])}."
+                if number == len(rows):
+                    answer_text += " Hãy theo dõi một chút english để học thêm một chút tiếng Anh mỗi ngày nhé!"
                 for phase, narration in [("question", text), ("answer", answer_text)]:
                     if phase == "answer":
                         for remaining in range(settings.countdown, 0, -1):

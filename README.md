@@ -17,6 +17,8 @@ Video H.264/AAC, 30 fps, 9:16, 720×1280 hoặc 1080×1920. Một file chứa to
 
 Câu hỏi, lựa chọn, giải thích và watermark nằm phía trên khoảng trống ở đáy video để tránh tên page và mô tả khi xem trên mạng xã hội.
 
+Khi bật giọng đọc, phần đáp án chỉ đọc ký tự phương án, ví dụ “Đáp án đúng là C.”; nội dung lựa chọn và giải thích vẫn hiển thị trên màn hình. Sau đáp án cuối cùng, video đọc thêm: “Hãy theo dõi một chút english để học thêm một chút tiếng Anh mỗi ngày nhé!”
+
 Các tùy chỉnh tự lưu khi thay đổi và khi đóng app: giọng chính/tiếng Anh, tốc độ, cao độ, thời gian suy nghĩ, đọc lựa chọn, bật giọng đọc, giao diện video, độ phân giải, chữ/bật watermark, âm lượng nhạc, độ tối nền và chế độ xem đáp án. Mở app lại sẽ khôi phục các giá trị này. Cài đặt và media nằm ngoài thư mục bản `.exe`, nên vẫn giữ khi cập nhật app; dữ liệu ảnh nền của bản trước cũng được giữ lại.
 
 Giọng Google Việt/Anh là mặc định và cần Internet. Giọng Edge nam/nữ cũng có trong danh sách nhưng có thể gặp lỗi kết nối dịch vụ. Bỏ chọn Tạo giọng đọc để xuất offline. Chưa có nhái giọng hoặc tự đăng mạng xã hội.
