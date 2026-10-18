@@ -21,7 +21,7 @@ class AppBackgroundTests(unittest.TestCase):
             chosen = {"voice": "Việt • Nam — Nam Minh", "en_voice": "English • Male — Guy",
                       "rate": 25, "pitch": -10, "countdown": 9, "resolution": "720 × 1280",
                       "video_template": "Tiếng Anh · Xanh sáng", "brand": "Mọt Chữ English",
-                      "watermark_enabled": False, "read_options": False, "speech": False,
+                      "watermark_enabled": False, "read_options": False, "read_explanation": False, "speech": False,
                       "music_volume": 27, "reveal": True}
             self.assertEqual(set(chosen), set(USER_DEFAULTS))
             app = App(data_dir=root / "data")
@@ -59,6 +59,7 @@ class AppBackgroundTests(unittest.TestCase):
                 self.assertEqual(app.watermark_entry.cget("state"), "disabled")
                 self.assertTrue(app.show_preview())
                 self.assertEqual(app.settings().background, selected)
+                self.assertFalse(app.settings().read_explanation)
                 app.clear_media()
             finally:
                 app.close()

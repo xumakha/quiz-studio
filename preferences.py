@@ -13,7 +13,7 @@ USER_DEFAULTS = {
     "voice": "Việt • Google (HTTP)", "en_voice": "English • Google (HTTP)",
     "rate": 0, "pitch": 0, "countdown": 5, "resolution": "1080 × 1920",
     "video_template": "Tự động theo môn học", "brand": "QUIZ STUDIO",
-    "watermark_enabled": True, "read_options": True, "speech": True,
+    "watermark_enabled": True, "read_options": True, "read_explanation": True, "speech": True,
     "music_volume": 12, "reveal": False,
 }
 

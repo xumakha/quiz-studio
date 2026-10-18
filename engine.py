@@ -79,6 +79,7 @@ class Settings:
     width: int = 1080
     height: int = 1920
     read_options: bool = True
+    read_explanation: bool = True
     speech: bool = True
     brand: str = "QUIZ STUDIO"
     watermark_enabled: bool = True
@@ -256,6 +257,8 @@ class Renderer:
                 answer_text = f"Đáp án đúng là {chr(65 + row['answer_index'])}."
                 if settings.voice.startswith("en") or settings.voice == "google:en":
                     answer_text = f"The answer is {chr(65 + row['answer_index'])}."
+                if settings.read_explanation and row.get("explanation", "").strip():
+                    answer_text += " " + row["explanation"].strip()
                 if number == len(rows):
                     answer_text += " Hãy theo dõi một chút english để học thêm một chút tiếng Anh mỗi ngày nhé!"
                 for phase, narration in [("question", text), ("answer", answer_text)]:

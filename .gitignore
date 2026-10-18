@@ -8,4 +8,5 @@ release-modern/
 release-fixed/
 release-clear/
 *.spec
+!QuizStudio.spec
 outputs/

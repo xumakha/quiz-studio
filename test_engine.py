@@ -15,13 +15,15 @@ from branding import CONTENT_OFFSET_Y
 
 
 class EngineTests(unittest.TestCase):
-    def test_answer_speech_only_reads_letter_and_final_follow_prompt(self):
+    def test_answer_speech_respects_explanation_toggle_and_final_follow_prompt(self):
         _, rows = parse_questions(json.dumps([
             {"question": "Test?", "options": ["first", "second", "third"],
-             "answer": "C", "explanation": "An explanation that must stay visual."}
+             "answer": "C", "explanation": "Explanation to read when enabled."}
         ] * 2))
         outro = "Hãy theo dõi một chút english để học thêm một chút tiếng Anh mỗi ngày nhé!"
-        for voice in ["vi-VN-HoaiMyNeural", "en-US-JennyNeural", "google:en"]:
+        for voice, read_explanation in [(voice, enabled)
+                                       for voice in ["vi-VN-HoaiMyNeural", "en-US-JennyNeural", "google:en"]
+                                       for enabled in [False, True]]:
             spoken = []
 
             async def capture(text, target, directory, on_part=lambda fraction: None):
@@ -31,14 +33,17 @@ class EngineTests(unittest.TestCase):
                 Path(args[-1]).touch()
                 return ""
 
-            with self.subTest(voice=voice), tempfile.TemporaryDirectory() as directory:
-                renderer = Renderer(Settings(voice=voice, countdown=0, width=180, height=320))
+            with self.subTest(voice=voice, read_explanation=read_explanation), tempfile.TemporaryDirectory() as directory:
+                renderer = Renderer(Settings(voice=voice, read_explanation=read_explanation,
+                                             countdown=0, width=180, height=320))
                 with patch.object(renderer, "speech", side_effect=capture), \
                      patch.object(renderer, "audio_duration", return_value=1), \
                      patch.object(renderer, "segment"), \
                      patch.object(renderer, "run", side_effect=fake_run):
                     renderer.render("Quiz", rows, Path(directory) / "video.mp4")
                 answer = "The answer is C." if voice in ["en-US-JennyNeural", "google:en"] else "Đáp án đúng là C."
+                if read_explanation:
+                    answer += " " + rows[0]["explanation"]
                 self.assertEqual(spoken[1], answer)
                 self.assertEqual(spoken[3], f"{answer} {outro}")
                 self.assertEqual(sum(outro in text for text in spoken), 1)

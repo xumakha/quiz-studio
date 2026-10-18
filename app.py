@@ -121,7 +121,7 @@ class App(tk.Tk):
         if not 0 <= dim <= 70:
             raise ValueError("Mức làm tối nền phải từ 0 đến 70%.")
         width, height = (720, 1280) if self.resolution.get().startswith("720") else (1080, 1920)
-        return Settings(voice=VOICES[self.voice.get()], english_voice=VOICES[self.en_voice.get()], rate=rate, pitch=pitch, countdown=countdown, width=width, height=height, read_options=self.read_options.get(), speech=self.speech.get(), brand=self.brand.get(), watermark_enabled=self.watermark_enabled.get(), template=TEMPLATES[self.video_template.get()], background=self.background, background_dim=dim, music=self.music, music_volume=volume / 100)
+        return Settings(voice=VOICES[self.voice.get()], english_voice=VOICES[self.en_voice.get()], rate=rate, pitch=pitch, countdown=countdown, width=width, height=height, read_options=self.read_options.get(), read_explanation=self.read_explanation.get(), speech=self.speech.get(), brand=self.brand.get(), watermark_enabled=self.watermark_enabled.get(), template=TEMPLATES[self.video_template.get()], background=self.background, background_dim=dim, music=self.music, music_volume=volume / 100)
 
     def validate(self):
         try:
