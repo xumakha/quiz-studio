@@ -2,7 +2,7 @@
 import math
 import re
 from PIL import Image, ImageDraw, ImageOps
-from branding import add_logo, compose_content
+from branding import CONTENT_MARGIN_X, add_logo, compose_content
 
 
 def render_frame(row, number, total, title, settings, reveal=False, countdown=None):
@@ -14,6 +14,7 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
             image = ImageOps.fit(ImageOps.exif_transpose(source).convert("RGB"), image.size, method=Image.Resampling.LANCZOS)
         shade = Image.new("RGBA", image.size, (8, 15, 34, round(255 * settings.background_dim / 100)))
         image = Image.alpha_composite(image.convert("RGBA"), shade).convert("RGB")
+    content_left, content_right = CONTENT_MARGIN_X, image.width - CONTENT_MARGIN_X
     background = image
     image = Image.new("RGBA", background.size)
     if settings.watermark_enabled:
@@ -28,9 +29,9 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
             draw.text(((left+right)/2, start_y + index*step), line, font=face,
                 anchor="mt", fill=color, stroke_width=stroke, stroke_fill="white")
 
-    draw.rounded_rectangle((48, 178, 1032, 322), 35, fill="#b9942b")
-    draw.rounded_rectangle((48, 165, 1032, 309), 35, fill="#ffdb4f")
-    centered(title.upper(), (88, 186, 992, 283), 70, "#ee633c", stroke=3)
+    draw.rounded_rectangle((content_left, 178, content_right, 322), 35, fill="#b9942b")
+    draw.rounded_rectangle((content_left, 165, content_right, 309), 35, fill="#ffdb4f")
+    centered(title.upper(), (content_left+40, 186, content_right-40, 283), 70, "#ee633c", stroke=3)
     grade = row.get("grade", row.get("class", ""))
     if not grade:
         match = re.search(r"lớp\s*(\d+)", str(row.get("subject", "")) + " " + title, re.I)
@@ -45,16 +46,17 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     centered(f"CÂU {number:02d} / {total:02d}", (435, 457, 645, 492), 25, "#58748c")
 
     # Only text in the question area: no fill, shadow or surrounding border.
-    centered(row["question"], (48, 515, 1032, 725), 64)
+    centered(row["question"], (content_left, 515, content_right, 725), 64)
 
     colors = ["#198942", "#177af1", "#f09a05", "#8851ef", "#ed5876", "#139aa9"]
     count = len(row["options"])
     columns = 1 if count == 2 else 2
     rows = math.ceil(count / columns)
     height = min(160, (360 - (rows-1)*24) // rows)
-    width = 984 if columns == 1 else 476
+    gap = 32
+    width = (content_right - content_left - gap * (columns - 1)) // columns
     for index, option in enumerate(row["options"]):
-        x = 48 + (index % columns) * 508
+        x = content_left + (index % columns) * (width + gap)
         y = 760 + (index // columns) * (height + 24)
         color = colors[index]
         correct = reveal and index == row["answer_index"]
@@ -76,21 +78,21 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
                 draw.ellipse((px-3, py-3, px+3, py+3), fill="white")
 
     if reveal:
-        draw.rounded_rectangle((48, 1160, 1032, 1400), 27, fill=(255, 255, 255, 240), outline="#8ac9a0", width=3)
-        draw.text((78, 1180), "ĐÁP ÁN " + chr(65+row["answer_index"]) + " · GIẢI THÍCH", font=font(32, True), fill="#198942")
+        draw.rounded_rectangle((content_left, 1160, content_right, 1400), 27, fill=(255, 255, 255, 240), outline="#8ac9a0", width=3)
+        draw.text((content_left+30, 1180), "ĐÁP ÁN " + chr(65+row["answer_index"]) + " · GIẢI THÍCH", font=font(32, True), fill="#198942")
         explanation = row["explanation"] or "Đáp án đúng: " + row["options"][row["answer_index"]]
-        centered(explanation, (78, 1235, 1002, 1378), 35, bold=False)
+        centered(explanation, (content_left+30, 1235, content_right-30, 1378), 35, bold=False)
     elif countdown is not None:
-        draw.rounded_rectangle((48, 1160, 1032, 1330), 28, fill=(255, 255, 255, 230))
-        draw.ellipse((110, 1188, 222, 1300), fill="#ffdb4f")
-        draw.text((166, 1244), str(countdown), font=font(65, True), anchor="mm", fill="#bf6515")
-        draw.text((255, 1201), "BẠN CHỌN ĐÁP ÁN NÀO?", font=font(34, True), fill=ink)
-        draw.rounded_rectangle((255, 1268, 957, 1284), 8, fill="#dfeaf5")
+        draw.rounded_rectangle((content_left, 1160, content_right, 1330), 28, fill=(255, 255, 255, 230))
+        draw.ellipse((content_left+62, 1188, content_left+174, 1300), fill="#ffdb4f")
+        draw.text((content_left+118, 1244), str(countdown), font=font(65, True), anchor="mm", fill="#bf6515")
+        draw.text((content_left+207, 1201), "BẠN CHỌN ĐÁP ÁN NÀO?", font=font(34, True), fill=ink)
+        draw.rounded_rectangle((content_left+207, 1268, content_right-75, 1284), 8, fill="#dfeaf5")
         fraction = max(0, min(1, countdown / max(1, settings.countdown)))
         if fraction:
-            draw.rounded_rectangle((255, 1268, 255+702*fraction, 1284), 8, fill=blue)
+            draw.rounded_rectangle((content_left+207, 1268, content_left+207+(content_right-content_left-282)*fraction, 1284), 8, fill=blue)
     if settings.watermark_enabled and settings.brand.strip():
-        draw.rounded_rectangle((48, 1420, 1032, 1470), 20, fill=(255, 255, 255, 225))
-        centered(settings.brand, (78, 1428, 1002, 1462), 27, "#526d83")
+        draw.rounded_rectangle((content_left, 1420, content_right, 1470), 20, fill=(255, 255, 255, 225))
+        centered(settings.brand, (content_left+30, 1428, content_right-30, 1462), 27, "#526d83")
     add_logo(image)
     return compose_content(background, image, settings)

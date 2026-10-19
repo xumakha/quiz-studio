@@ -5,6 +5,7 @@ from pathlib import Path
 from PIL import Image
 
 CONTENT_OFFSET_Y = 96
+CONTENT_MARGIN_X = 80
 
 
 def compose_content(background, content, settings):
@@ -41,8 +42,13 @@ def _character():
 def add_logo(image, *, watermark=False):
     """Place branding on the 1080 x 1920 design canvas."""
     logo = _logo(800, 800, 0.07) if watermark else _logo(132, 118, 1.0)
-    position = ((image.width - logo.width) // 2, (image.height - logo.height) // 2) if watermark else (36, 48)
-    image.paste(logo, position, logo)
+    position = ((image.width - logo.width) // 2, (image.height - logo.height) // 2) if watermark else (CONTENT_MARGIN_X, 48)
+    if image.mode == "RGBA":
+        # Preserve the logo alpha: paste with a mask would apply opacity twice
+        # when this transparent layer is later composited onto the background.
+        image.alpha_composite(logo, position)
+    else:
+        image.paste(logo, position, logo)
     if not watermark:
         character = _character()
-        image.paste(character, (image.width - character.width - 36, 48), character)
+        image.paste(character, (image.width - character.width - CONTENT_MARGIN_X, 48), character)

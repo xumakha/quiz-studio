@@ -11,10 +11,20 @@ from PIL import Image
 
 from engine import Cancelled, Renderer, Settings, frame, parse_questions
 from video_themes import detect_template, video_template
-from branding import CONTENT_OFFSET_Y
+from branding import CONTENT_OFFSET_Y, add_logo
 
 
 class EngineTests(unittest.TestCase):
+    def test_watermark_opacity_survives_transparent_content_layer(self):
+        background = Image.new("RGBA", (1080, 1920), "white")
+        direct = background.copy()
+        add_logo(direct, watermark=True)
+        content = Image.new("RGBA", background.size)
+        add_logo(content, watermark=True)
+        combined = Image.alpha_composite(background, content)
+        self.assertEqual(combined.tobytes(), direct.tobytes())
+        self.assertNotEqual(combined.tobytes(), background.tobytes())
+
     def test_answer_speech_respects_explanation_toggle_and_final_follow_prompt(self):
         _, rows = parse_questions(json.dumps([
             {"question": "Test?", "options": ["first", "second", "third"],
