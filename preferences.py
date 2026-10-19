@@ -11,6 +11,7 @@ from PIL import Image
 
 USER_DEFAULTS = {
     "voice": "Việt • Google (HTTP)", "en_voice": "English • Google (HTTP)",
+    "dialogue_voice_a": "English • Female — Jenny", "dialogue_voice_b": "English • Male — Guy",
     "rate": 0, "pitch": 0, "countdown": 5, "resolution": "1080 × 1920",
     "video_template": "Tự động theo môn học", "brand": "QUIZ STUDIO",
     "watermark_enabled": True, "read_options": True, "read_explanation": True, "speech": True,
@@ -32,6 +33,7 @@ class UserSettingsStore:
         from video_themes import TEMPLATES
         choices = {"voice": VOICES, "en_voice": [k for k, v in VOICES.items() if v.startswith("en") or v == "google:en"],
                    "resolution": ["1080 × 1920", "720 × 1280"], "video_template": TEMPLATES}
+        choices.update({key: choices["en_voice"] for key in ("dialogue_voice_a", "dialogue_voice_b")})
         ranges = {"rate": (-50, 100), "pitch": (-50, 50), "countdown": (1, 30), "music_volume": (0, 100)}
         result = dict(USER_DEFAULTS)
         for key, default in USER_DEFAULTS.items():

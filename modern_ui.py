@@ -7,7 +7,7 @@ from video_themes import TEMPLATES
 from icons import icon, IconTabs
 from preferences import USER_DEFAULTS
 
-BG, INK, MUTED, ACCENT, LINE = "#f6f8fa", "#25333d", "#7c8793", "#218c7c", "#e3e8ed"
+from ui_components import BG, INK, MUTED, ACCENT, LINE, box, label, button, dropdown
 
 
 def build_ui(app, saved):
@@ -22,19 +22,6 @@ def build_ui(app, saved):
     style.configure("Treeview.Heading", background=BG, foreground=MUTED, font=("Segoe UI", 9, "bold"), relief="flat")
     style.map("Treeview", background=[("selected", "#e7f5f1")], foreground=[("selected", ACCENT)])
 
-    def box(parent, color="transparent", **kw):
-        return ctk.CTkFrame(parent, fg_color=color, **kw)
-
-    def label(parent, text, size=13, color=INK, bold=False, **kw):
-        return ctk.CTkLabel(parent, text=text, text_color=color, font=("Segoe UI", size, "bold" if bold else "normal"), anchor=kw.pop("anchor", "w"), **kw)
-
-    def button(parent, text, command, primary=False, symbol=None, **kw):
-        return ctk.CTkButton(parent, text=text, command=command, height=36, corner_radius=7,
-            fg_color=ACCENT if primary else "white", hover_color="#187b6c" if primary else "#eef7f4",
-            text_color="white" if primary else INK, text_color_disabled="#a8b3bd",
-            border_width=0 if primary else 1, border_color=LINE, font=("Segoe UI", 12),
-            image=icon(symbol,"white" if primary else MUTED,16) if symbol else None,compound="left", **kw)
-
     def divider(parent):
         box(parent, LINE, height=1, corner_radius=0).pack(fill="x", pady=10)
 
@@ -43,10 +30,7 @@ def build_ui(app, saved):
 
     def combo(parent, text, variable, values):
         label(parent, text, 12).pack(anchor="w", pady=(9, 6))
-        ctk.CTkComboBox(parent, variable=variable, values=values, state="readonly", height=36, corner_radius=6,
-            fg_color="white", border_color=LINE, button_color="#f0f4f5", button_hover_color="#e2eee9",
-            text_color=INK, dropdown_fg_color="white", dropdown_text_color=INK, dropdown_hover_color="#e7f5f1",
-            font=("Segoe UI", 11), dropdown_font=("Segoe UI", 12)).pack(fill="x")
+        dropdown(parent, variable, values).pack(fill="x")
 
     def slider(parent, text, variable, low, high, suffix=""):
         label(parent, text, 12).pack(anchor="w", pady=(14, 5))
@@ -66,6 +50,8 @@ def build_ui(app, saved):
 
     app.voice = tk.StringVar(value="Việt • Google (HTTP)")
     app.en_voice = tk.StringVar(value="English • Google (HTTP)")
+    app.dialogue_voice_a = tk.StringVar()
+    app.dialogue_voice_b = tk.StringVar()
     app.rate, app.pitch, app.countdown = tk.IntVar(value=0), tk.IntVar(value=0), tk.IntVar(value=5)
     app.resolution = tk.StringVar(value="1080 × 1920")
     app.video_template = tk.StringVar(value="Tự động theo môn học")
@@ -114,7 +100,7 @@ def build_ui(app, saved):
     app.progress.pack(fill="x")
 
     intro = box(app)
-    intro.pack(fill="x", padx=28, pady=(19, 17))
+    intro.pack(fill="x", padx=28, pady=(12, 10))
     label(intro, "Trình biên tập video", 23, bold=True).pack(anchor="w")
     label(intro, "Biến những câu hỏi thú vị thành video của riêng bạn.", 12, MUTED).pack(anchor="w", pady=(2, 0))
     workspace = box(app)
@@ -128,6 +114,7 @@ def build_ui(app, saved):
         card = box(workspace, "white", corner_radius=10, border_width=1, border_color=LINE)
         card.grid(row=0, column=column, sticky="nsew", padx=(0 if column==0 else 18, 0))
         heading = box(card)
+        card.heading = heading
         heading.pack(fill="x", padx=18, pady=(15, 12))
         ctk.CTkLabel(heading,text="",image=icon(symbol,MUTED,18),width=18,height=20).pack(side="left",padx=(0,9))
         label(heading, title, 14, bold=True).pack(side="left")
@@ -152,6 +139,17 @@ def build_ui(app, saved):
     section(voice, "Giọng đọc & ngôn ngữ")
     combo(voice, "Giọng đọc chính", app.voice, list(VOICES))
     combo(voice, "Giọng cho đoạn tiếng Anh", app.en_voice, [k for k,v in VOICES.items() if v.startswith("en") or v=="google:en"])
+    english_voices = [k for k, v in VOICES.items() if v.startswith("en") or v == "google:en"]
+    dialogue_voices = box(voice, BG, corner_radius=8, border_width=1, border_color=LINE)
+    dialogue_voices.pack(fill="x", pady=(16, 4))
+    label(dialogue_voices, "GIỌNG HỘI THOẠI", 10, MUTED, True).pack(anchor="w", padx=12, pady=(12, 2))
+    for character, variable in (("A", app.dialogue_voice_a), ("B", app.dialogue_voice_b)):
+        speaker = box(dialogue_voices)
+        speaker.pack(fill="x", padx=12, pady=(10, 6))
+        label(speaker, character, 11, ACCENT, True, fg_color="#e7f5f1", corner_radius=5, width=24, height=24, anchor="center").pack(side="left", padx=(0, 8))
+        label(speaker, f"Nhân vật {character}", 12).pack(side="left")
+        dropdown(dialogue_voices, variable, english_voices).pack(fill="x", padx=12)
+    label(dialogue_voices, "Chọn hai giọng khác nhau cho A và B.", 10, MUTED, wraplength=205, justify="left").pack(anchor="w", padx=12, pady=(8, 12))
     slider(voice, "Tốc độ giọng đọc", app.rate, -50, 100, "%")
     slider(voice, "Cao độ", app.pitch, -50, 50)
     button(voice, "Nghe thử giọng đọc", app.voice_preview, symbol="speaker").pack(fill="x", pady=14)
@@ -196,15 +194,13 @@ def build_ui(app, saved):
     ctk.CTkLabel(format_card,text="Video dọc · 9:16",image=icon("phone",ACCENT,18),compound="left",text_color=INK,font=("Segoe UI",12,"bold")).pack(anchor="w",padx=12,pady=(12,2))
     label(format_card, "30 fps · MP4 · Shorts / TikTok / Reels", 10, MUTED).pack(anchor="w", padx=12, pady=(0, 12))
 
-    center = panel(1, "Nội dung câu hỏi", "file-json")
-    toolbar = box(center)
-    toolbar.pack(fill="x", padx=16, pady=12)
-    app.question_count = ttk.Label(toolbar, foreground=MUTED)
-    app.question_count.pack(side="left")
-    button(toolbar, "Lưu JSON", app.save_json,symbol="save", width=105).pack(side="right")
-    button(toolbar, "Mở JSON", app.open_json,symbol="folder", width=105).pack(side="right", padx=7)
+    center = panel(1, "Nội dung video", "file-json")
+    from content_editor import ContentEditor
+    app.content_editor = ContentEditor(app, center)
+    app.question_count = ttk.Label(center.heading, foreground=MUTED)
+    app.question_count.pack(side="right")
     bottom = box(center)
-    bottom.pack(side="bottom", fill="x", padx=18, pady=16)
+    bottom.pack(side="bottom", fill="x", padx=18, pady=10)
     button(bottom, "Kiểm tra & xem trước", app.validate,symbol="check", width=185).pack(side="right")
     label(bottom, "A–F · [en]…[/en]", 10, MUTED).pack(side="left")
     app.validation = ttk.Label(center, text="", wraplength=480)
@@ -228,26 +224,29 @@ def build_ui(app, saved):
     app.text.tag_configure("json_string", foreground="#a6d3ad")
     app.text.bind("<<Modified>>", app.json_changed)
     app.question_list = ttk.Treeview(listing, columns=("question", "answer"), show="headings", selectmode="browse")
-    for key, text in [("question", "Câu hỏi"), ("answer", "Đáp án")]:
+    for key, text in [("question", "Nội dung"), ("answer", "Dạng video")]:
         app.question_list.heading(key, text=text)
     app.question_list.column("question", width=300, stretch=True)
-    app.question_list.column("answer", width=65, stretch=False)
+    app.question_list.column("answer", width=140, stretch=False)
     scroller = ctk.CTkScrollbar(listing, command=app.question_list.yview)
     app.question_list.configure(yscrollcommand=scroller.set)
     scroller.pack(side="right", fill="y")
     app.question_list.pack(fill="both", expand=True)
     app.question_list.bind("<<TreeviewSelect>>", app.select_list_question)
 
-    right = panel(2, "Xem trước", "play", "9:16")
+    right_card = panel(2, "Xem trước", "play", "9:16")
+    right = ctk.CTkScrollableFrame(right_card, fg_color="white", corner_radius=0, width=244,
+                                   scrollbar_button_color="#dbe3e7", scrollbar_button_hover_color="#b8ccc8")
+    right.pack(fill="both", expand=True, padx=3, pady=(0, 8))
     app.template_label = label(right, "TỰ ĐỘNG THEO MÔN HỌC", 10, ACCENT, True)
     app.template_label.pack(pady=(16, 8))
     stage = box(right, BG, corner_radius=8)
-    stage.pack(fill="x", padx=18, pady=10)
+    stage.pack(fill="x", padx=10, pady=8)
     app.preview = ttk.Label(stage, background=BG)
-    app.preview.pack(padx=14, pady=14)
-    label(right, "Câu hỏi đang xem", 11, MUTED).pack(anchor="w", padx=20, pady=(8, 7))
+    app.preview.pack(padx=10, pady=10)
+    label(right, "Nội dung đang xem", 11, MUTED).pack(anchor="w", padx=20, pady=(8, 7))
     controls = box(right)
-    controls.pack(fill="x", padx=18)
+    controls.pack(fill="x", padx=10)
     button(controls, "", lambda: app.move_question(-1),symbol="left", width=36).pack(side="left")
     question_entry = ctk.CTkEntry(controls, textvariable=app.selected, width=100, height=36, corner_radius=6,
         border_color=LINE, fg_color="white", text_color=INK, justify="center")
@@ -256,9 +255,20 @@ def build_ui(app, saved):
     question_entry.bind("<FocusOut>", lambda e: app.show_preview())
     button(controls, "", lambda: app.move_question(1),symbol="right", width=36).pack(side="right")
     reveal_area = box(right)
-    reveal_area.pack(fill="x", padx=18, pady=6)
+    reveal_area.pack(fill="x", padx=10, pady=4)
     toggle(reveal_area, "Hiện đáp án & giải thích", app.reveal, app.show_preview)
-    label(right, "30 fps · MP4 · Video dọc", 10, MUTED).pack(pady=(2, 12))
+    playback = box(right, BG, corner_radius=8, border_width=1, border_color=LINE)
+    playback.pack(fill="x", padx=10, pady=(4, 12))
+    play_actions = box(playback)
+    play_actions.pack(fill="x", padx=10, pady=(10, 8))
+    play_actions.columnconfigure((0, 1), weight=1)
+    button(play_actions, "Câu này", lambda: app.play_preview(False), symbol="play", width=90).grid(row=0, column=0, sticky="ew", padx=(0, 4))
+    button(play_actions, "Toàn video", lambda: app.play_preview(True), primary=True, width=90).grid(row=0, column=1, sticky="ew", padx=(4, 0))
+    play_status = box(playback)
+    play_status.pack(fill="x", padx=10, pady=(0, 10))
+    button(play_status, "Dừng", app.stop_preview, symbol="stop", width=70, height=30).pack(side="right", padx=(8, 0))
+    app.duration_label = label(play_status, "Thời lượng dự kiến", 10, MUTED, wraplength=140, justify="left")
+    app.duration_label.pack(side="left", fill="x", expand=True)
     app.background_dim.trace_add("write", app.background_dim_changed)
     app.brand.trace_add("write", lambda *args: app.show_preview())
     app.video_template.trace_add("write", lambda *args: app.show_preview())

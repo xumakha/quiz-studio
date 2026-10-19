@@ -7,6 +7,10 @@ release/
 release-modern/
 release-fixed/
 release-clear/
+release-dialogue/
+release-ui/
+release-highlight/
+release-layout/
 release-ending/
 release-ending-fade/
 *.spec

@@ -19,6 +19,7 @@ class AppBackgroundTests(unittest.TestCase):
                 stream.setparams((2, 2, 44100, 0, "NONE", "not compressed"))
                 stream.writeframes(b"\x00" * 44100 * 4)
             chosen = {"voice": "Việt • Nam — Nam Minh", "en_voice": "English • Male — Guy",
+                      "dialogue_voice_a": "English • Google (HTTP)", "dialogue_voice_b": "English • Female — Jenny",
                       "rate": 25, "pitch": -10, "countdown": 9, "resolution": "720 × 1280",
                       "video_template": "Tiếng Anh · Xanh sáng", "brand": "Mọt Chữ English",
                       "watermark_enabled": False, "read_options": False, "read_explanation": False, "speech": False,

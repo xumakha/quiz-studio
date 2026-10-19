@@ -78,6 +78,8 @@ class App(tk.Tk):
             return False
 
     def json_changed(self, event=None):
+        if self.text.edit_modified():
+            self.stop_preview()
         if not self.text.edit_modified():
             return
         self.text.edit_modified(False)
@@ -114,6 +116,8 @@ class App(tk.Tk):
         ttk.Spinbox(parent, from_=low, to=high, textvariable=variable, width=27).pack(fill="x", padx=(0, 16))
 
     def settings(self):
+        if any(row.get("type") == "dialogue" for row in self.rows) and self.dialogue_voice_a.get() == self.dialogue_voice_b.get():
+            raise ValueError("Hội thoại: hãy chọn hai giọng khác nhau cho nhân vật A và B trong tab Giọng đọc.")
         rate, pitch, countdown, volume = self.rate.get(), self.pitch.get(), self.countdown.get(), self.music_volume.get()
         dim = self.background_dim.get()
         if not (-50 <= rate <= 100 and -50 <= pitch <= 50 and 1 <= countdown <= 30 and 0 <= volume <= 100):
@@ -121,18 +125,28 @@ class App(tk.Tk):
         if not 0 <= dim <= 70:
             raise ValueError("Mức làm tối nền phải từ 0 đến 70%.")
         width, height = (720, 1280) if self.resolution.get().startswith("720") else (1080, 1920)
-        return Settings(voice=VOICES[self.voice.get()], english_voice=VOICES[self.en_voice.get()], rate=rate, pitch=pitch, countdown=countdown, width=width, height=height, read_options=self.read_options.get(), read_explanation=self.read_explanation.get(), speech=self.speech.get(), brand=self.brand.get(), watermark_enabled=self.watermark_enabled.get(), template=TEMPLATES[self.video_template.get()], background=self.background, background_dim=dim, music=self.music, music_volume=volume / 100)
+        return Settings(voice=VOICES[self.voice.get()], english_voice=VOICES[self.en_voice.get()], dialogue_voice_a=VOICES[self.dialogue_voice_a.get()], dialogue_voice_b=VOICES[self.dialogue_voice_b.get()], rate=rate, pitch=pitch, countdown=countdown, width=width, height=height, read_options=self.read_options.get(), read_explanation=self.read_explanation.get(), speech=self.speech.get(), brand=self.brand.get(), watermark_enabled=self.watermark_enabled.get(), template=TEMPLATES[self.video_template.get()], background=self.background, background_dim=dim, music=self.music, music_volume=volume / 100)
 
     def validate(self):
         try:
             self.highlight_json()
             self.quiz_title, self.rows = parse_questions(self.text.get("1.0", "end"))
+            from content_types import normalize
+            from engine import parse_legacy_questions
+            _, _, mode = normalize(json.loads(self.text.get("1.0", "end")), parse_legacy_questions)
+            self.content_editor.detect(mode)
             self.validation.configure(text=f"JSON hợp lệ: {len(self.rows)} câu hỏi.", foreground="#218c7c")
             self.question_count.configure(text=f"{len(self.rows)} câu hỏi")
             self.question_list.delete(*self.question_list.get_children())
             for index, row in enumerate(self.rows):
                 from engine import plain
-                self.question_list.insert("", "end", iid=str(index), values=(f"{index + 1}. {plain(row['question'])}", chr(65 + row['answer_index'])))
+                from content_timeline import plan_item
+                scenes = plan_item(row, self.settings())
+                from content_types import LABELS
+                self.question_list.insert("", "end", iid=str(index), values=(f"{index + 1}. {plain(scenes[0].text)}", LABELS[row["type"]]))
+            from content_timeline import plan_item, estimated_seconds
+            duration = sum(estimated_seconds(scene) for row in self.rows for scene in plan_item(row, self.settings())) + 3
+            self.duration_label.configure(text=f"Ước tính: {duration:.0f}s. Export cập nhật theo TTS thực tế.")
             return self.show_preview()
         except Exception as error:
             self.rows = []
@@ -150,7 +164,7 @@ class App(tk.Tk):
             settings.template = theme
             self.template_label.configure(text={"math": "TOÁN · XANH BẠC HÀ", "english": "TIẾNG ANH · XANH SÁNG", "classic": "QUIZ · NHIỀU MÀU"}[theme])
             picture = frame(self.rows[index], index + 1, len(self.rows), self.quiz_title, settings, reveal=self.reveal.get(), countdown=self.countdown.get())
-            picture.thumbnail((180, 320))
+            picture.thumbnail((180, 220))
             self.preview_image = ImageTk.PhotoImage(picture)
             self.preview.configure(image=self.preview_image)
             return True
@@ -163,6 +177,8 @@ class App(tk.Tk):
         if path:
             try:
                 data = Path(path).read_text(encoding="utf-8-sig")
+                self.content_editor.drafts[self.content_editor.mode] = self.content_editor.source()
+                self.stop_preview()
                 self.text.delete("1.0", "end")
                 self.text.insert("1.0", data)
                 self.validate()
@@ -174,7 +190,94 @@ class App(tk.Tk):
             return
         path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON", "*.json")])
         if path:
-            Path(path).write_text(self.text.get("1.0", "end"), encoding="utf-8")
+            from content_types import export_document
+            document = export_document(self.quiz_title, self.rows, self.content_editor.mode)
+            Path(path).write_text(json.dumps(document, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def stop_preview(self):
+        if getattr(self, "preview_cancel", None):
+            self.preview_cancel.set()
+        if sys.platform == "win32":
+            import winsound
+            winsound.PlaySound(None, winsound.SND_PURGE)
+        timer = getattr(self, "playback_timer", None)
+        if timer:
+            self.after_cancel(timer)
+            self.playback_timer = None
+        directory = getattr(self, "preview_directory", None)
+        if directory:
+            import shutil
+            shutil.rmtree(directory, ignore_errors=True)
+            self.preview_directory = None
+
+    def play_preview(self, whole=False):
+        self.stop_preview()
+        if self.busy or not self.validate():
+            return
+        from content_timeline import plan_item, prepare_scene, ending_scene, preview_audio
+        settings = self.settings()
+        settings.template = video_template(self.rows, self.quiz_title, settings.template)
+        indexes = range(len(self.rows)) if whole else [self.selected.get()-1]
+        rows, title = list(self.rows), self.quiz_title
+        scenes = [(i, scene) for i in indexes for scene in plan_item(rows[i], settings)]
+        if whole:
+            scenes.append((len(rows)-1, ending_scene()))
+        self.preview_cancel = threading.Event()
+        cancel = self.preview_cancel
+        self.preview_generation = getattr(self, "preview_generation", 0) + 1
+        generation = self.preview_generation
+        def prepare():
+            directory = Path(tempfile.mkdtemp(prefix="quiz-preview-"))
+            renderer = Renderer(settings, cancel=cancel)
+            try:
+                from content_renderer import validate_layout
+                validate_layout(title, rows, settings, renderer.check)
+                prepared = [(i, prepare_scene(renderer, scene, directory, str(n), i+1)) for n, (i, scene) in enumerate(scenes)]
+                audio = preview_audio(renderer, [p for _, p in prepared], directory)
+                renderer.check()
+                self.events.put(("preview_ready", (generation, rows, title, settings, prepared, directory, audio)))
+            except Exception as error:
+                import shutil
+                shutil.rmtree(directory, ignore_errors=True)
+                if not cancel.is_set():
+                    self.events.put(("error", str(error)))
+            return "Đã chuẩn bị preview."
+        self.start_job(prepare)
+
+    def begin_preview(self, data):
+        generation, rows, title, settings, scenes, directory, audio = data
+        if generation != getattr(self, "preview_generation", 0) or self.preview_cancel.is_set():
+            import shutil
+            shutil.rmtree(directory, ignore_errors=True)
+            return
+        self.preview_directory = directory
+        self.duration_label.configure(text=f"Thời lượng preview theo âm thanh: {sum(p.seconds for _, p in scenes):.1f}s")
+        from content_renderer import render_scene, render_ending
+        import time
+        started = None
+        elapsed = 0
+        def advance(position=0):
+            nonlocal started, elapsed
+            if position >= len(scenes):
+                self.stop_preview()
+                return
+            index, prepared = scenes[position]
+            try:
+                picture = render_ending(settings) if prepared.scene.phase == "ending" else render_scene(rows[index], prepared.scene, index+1, len(rows), title, settings)
+                picture.thumbnail((180, 220))
+                self.preview_image = ImageTk.PhotoImage(picture)
+                self.preview.configure(image=self.preview_image)
+                self.selected.set(index+1)
+                if started is None:
+                    if audio:
+                        import winsound
+                        winsound.PlaySound(str(audio), winsound.SND_FILENAME | winsound.SND_ASYNC)
+                    started = time.monotonic()
+                elapsed += prepared.seconds
+                self.playback_timer = self.after(max(1, round((started+elapsed-time.monotonic())*1000)), lambda: advance(position+1))
+            except Exception as error:
+                self.validation.configure(text=str(error), foreground="#ba4247")
+        advance()
 
     def choose_media(self, kind):
         types = [("Ảnh", "*.png *.jpg *.jpeg *.webp")] if kind == "background" else [("Âm thanh", "*.mp3 *.wav *.m4a *.aac")]
@@ -288,9 +391,10 @@ class App(tk.Tk):
             return
         settings, rows, title = self.settings(), list(self.rows), self.quiz_title
         def job():
-            Renderer(settings, lambda text: self.events.put(("log", text)), self.cancel,
-                     progress=lambda percent, message: self.events.put(("progress", (percent, message)))).render(title, rows, path)
-            return {"message": f"Đã xuất video: {path}", "path": str(Path(path).resolve())}
+            renderer = Renderer(settings, lambda text: self.events.put(("log", text)), self.cancel,
+                                progress=lambda percent, message: self.events.put(("progress", (percent, message))))
+            renderer.render(title, rows, path)
+            return {"message": f"Đã xuất video: {path}", "path": str(Path(path).resolve()), "duration": renderer.duration}
         self.start_job(job, exporting=True)
 
     def open_output_folder(self):
@@ -309,6 +413,9 @@ class App(tk.Tk):
         try:
             while True:
                 kind, text = self.events.get_nowait()
+                if kind == "preview_ready":
+                    self.begin_preview(text)
+                    continue
                 if kind == "progress":
                     percent, message = text
                     self.progress["value"] = percent
@@ -317,6 +424,8 @@ class App(tk.Tk):
                     continue
                 if kind == "done" and self.job_exporting:
                     self.last_output = Path(text["path"])
+                    if "duration" in text:
+                        self.duration_label.configure(text=f"Thời lượng video thực tế: {text['duration']:.1f}s")
                     text = text["message"]
                     self.folder_button.configure(state="normal")
                 self.status.configure(text=text)
@@ -336,12 +445,14 @@ class App(tk.Tk):
                         self.progress_label.configure(text="Lỗi")
                     self.export_button.configure(state="normal")
                     if kind == "error":
-                        messagebox.showerror("Tác vụ thất bại", text + "\n\nNếu tạo giọng thất bại, kiểm tra Internet hoặc bỏ chọn Tạo giọng đọc để xuất offline.")
+                        guidance = "\n\nKiểm tra Internet rồi thử lại, hoặc bỏ chọn Tạo giọng đọc để xuất offline." if "(TTS)" in text else ""
+                        messagebox.showerror("Tác vụ thất bại", text + guidance)
         except queue.Empty:
             pass
         self.after(100, self.poll)
 
     def close(self):
+        self.stop_preview()
         if self.busy:
             self.cancel.set()
             self.status.configure(text="Đang hủy tác vụ, hãy đóng cửa sổ sau khi tác vụ dừng.")
@@ -353,6 +464,8 @@ class App(tk.Tk):
             self.after_cancel(self.settings_save_timer)
         if not self.save_user_settings():
             return
+        for timer in self.tk.call("after", "info"):
+            self.after_cancel(timer)
         self.destroy()
 
 
@@ -364,6 +477,15 @@ if __name__ == "__main__":
             app.withdraw()
             app.update_idletasks()
             assert len(app.rows) == 2 and app.show_preview()
+            from content_types import DEFAULT_MODE, REGISTRY, sample_document
+            from content_timeline import plan_item
+            from content_renderer import render_scene
+            assert app.content_editor.mode == DEFAULT_MODE
+            checked_settings = Settings(speech=False, width=180, height=320)
+            for kind in REGISTRY:
+                checked_title, checked_rows = parse_questions(json.dumps(sample_document(kind)))
+                for scene in plan_item(checked_rows[0], checked_settings):
+                    render_scene(checked_rows[0], scene, 1, 1, checked_title, checked_settings)
             app.reveal.set(True)
             assert app.show_preview()
             app.job_exporting = True
@@ -381,7 +503,7 @@ if __name__ == "__main__":
             ffmpeg = Renderer(app.settings()).ffmpeg
             assert Path(ffmpeg).is_file()
             app.destroy()
-            report.write_text(json.dumps({"ok": True, "questions": 2, "ffmpeg": ffmpeg, "progress_and_output_button": True}), encoding="utf-8")
+            report.write_text(json.dumps({"ok": True, "questions": 2, "default_mode": DEFAULT_MODE, "content_types": len(REGISTRY), "ffmpeg": ffmpeg, "progress_and_output_button": True}), encoding="utf-8")
         except Exception as error:
             report.write_text(json.dumps({"ok": False, "error": str(error)}), encoding="utf-8")
             sys.exit(1)

@@ -1,5 +1,17 @@
 @echo off
 cd /d "%~dp0"
+if exist "release-layout\QuizStudio\QuizStudio.exe" (
+  if exist "release-layout\QuizStudio\_internal\_tcl_data\init.tcl" (
+    start "" "release-layout\QuizStudio\QuizStudio.exe"
+    exit /b
+  )
+)
+if exist "release-dialogue\QuizStudio\QuizStudio.exe" (
+  if exist "release-dialogue\QuizStudio\_internal\_tcl_data\init.tcl" (
+    start "" "release-dialogue\QuizStudio\QuizStudio.exe"
+    exit /b
+  )
+)
 if not exist "release-clear\QuizStudio\QuizStudio.exe" goto missing
 if not exist "release-clear\QuizStudio\_internal\python3*.dll" goto missing
 if not exist "release-clear\QuizStudio\_internal\_tcl_data\init.tcl" goto missing

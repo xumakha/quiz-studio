@@ -7,6 +7,8 @@ import re
 import subprocess
 import tempfile
 import threading
+import hashlib
+import shutil
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -34,7 +36,7 @@ def plain(text):
     return re.sub(r"\[/?en\]", "", str(text), flags=re.I)
 
 
-def parse_questions(raw):
+def parse_legacy_questions(raw):
     data = json.loads(raw)
     title = data.get("title", "QUIZ CHALLENGE") if isinstance(data, dict) else "QUIZ CHALLENGE"
     rows = data.get("questions") if isinstance(data, dict) else data
@@ -69,10 +71,18 @@ def parse_questions(raw):
     return str(title), result
 
 
+def parse_questions(raw):
+    from content_types import normalize
+    title, rows, _ = normalize(json.loads(raw), parse_legacy_questions)
+    return title, rows
+
+
 @dataclass
 class Settings:
     voice: str = "vi-VN-HoaiMyNeural"
     english_voice: str = "en-US-JennyNeural"
+    dialogue_voice_a: str = "en-US-JennyNeural"
+    dialogue_voice_b: str = "en-US-GuyNeural"
     rate: int = 0
     pitch: int = 0
     countdown: int = 5
@@ -135,8 +145,19 @@ def draw_option_text(draw, text, rectangle, size, color):
 
 
 def frame(row, number, total, title, settings, reveal=False, countdown=None):
-    from video_themes import render_frame
-    return render_frame(row, number, total, title, settings, reveal, countdown)
+    from content_timeline import plan_item
+    from content_renderer import render_scene
+    scenes = plan_item(row, settings)
+    if reveal:
+        scene = scenes[-1]
+    elif countdown is not None:
+        scene = next((s for s in scenes if s.countdown is not None), scenes[0])
+        if scene.countdown is not None:
+            scene = replace(scene, countdown=countdown)
+    else:
+        scene = scenes[0]
+    return render_scene(row, scene, number, total, title, settings)
+
 
 
 class Cancelled(Exception):
@@ -172,6 +193,17 @@ class Renderer:
         return stderr.decode("utf-8", errors="replace")
 
     async def speech(self, text, target, directory, on_part=lambda fraction: None):
+        from preferences import BackgroundStore
+        cache = BackgroundStore().directory / "tts-cache"
+        cache.mkdir(parents=True, exist_ok=True)
+        key = hashlib.sha256(json.dumps([text, self.settings.voice, self.settings.english_voice,
+                                        self.settings.rate, self.settings.pitch], ensure_ascii=False).encode("utf-8")).hexdigest()
+        cached = cache / f"{key}.wav"
+        if cached.exists():
+            self.check()
+            shutil.copyfile(cached, target)
+            on_part(1)
+            return
         parts = re.split(r"(\[en\].*?\[/en\])", text, flags=re.I | re.S)
         parts = [part for part in parts if re.search(r"\w", plain(part))]
         files = []
@@ -209,6 +241,12 @@ class Renderer:
             args.extend(["-i", path])
         inputs = "".join(f"[{i}:a]" for i in range(len(files)))
         self.run([*args, "-filter_complex", f"{inputs}concat=n={len(files)}:v=0:a=1[out]", "-map", "[out]", "-ar", "44100", "-ac", "2", target])
+        staging = cache / f"{key}-{os.getpid()}-{threading.get_ident()}.tmp"
+        try:
+            shutil.copyfile(target, staging)
+            os.replace(staging, cached)
+        finally:
+            staging.unlink(missing_ok=True)
 
     def audio_duration(self, path):
         info = self.run(["-i", path, "-f", "null", "-"])
@@ -235,7 +273,8 @@ class Renderer:
         settings = replace(self.settings, template=video_template(rows, title, self.settings.template))
         destination = Path(output).resolve()
         destination.parent.mkdir(parents=True, exist_ok=True)
-        total_steps = len(rows) * (settings.countdown + 4) + 4 + bool(settings.music)
+        from content_timeline import plan_item
+        total_steps = sum(len(plan_item(row, settings)) for row in rows) + 4 + bool(settings.music)
         completed = 0
         def update(message, increment=0, fraction=0):
             nonlocal completed
@@ -244,6 +283,8 @@ class Renderer:
             if not fraction:
                 self.log(message)
         update("Chuẩn bị tạo video…")
+        from content_renderer import validate_layout
+        validate_layout(title, rows, settings, self.check)
         # Final file is replaced only after a complete successful render.
         with tempfile.TemporaryDirectory(prefix="quiz-", dir=destination.parent) as temp:
             directory = Path(temp)
@@ -252,57 +293,34 @@ class Renderer:
             for number, row in enumerate(rows, 1):
                 self.check()
                 prefix = f"Câu {number}/{len(rows)}"
-                text = row["question"]
-                if settings.read_options:
-                    text += ". " + ". ".join(f"{chr(65 + i)}. {x}" for i, x in enumerate(row["options"]))
-                answer_text = f"Đáp án đúng là {chr(65 + row['answer_index'])}."
-                if settings.voice.startswith("en") or settings.voice == "google:en":
-                    answer_text = f"The answer is {chr(65 + row['answer_index'])}."
-                if settings.read_explanation and row.get("explanation", "").strip():
-                    answer_text += " " + row["explanation"].strip()
-                for phase, narration in [("question", text), ("answer", answer_text)]:
-                    if phase == "answer":
-                        for remaining in range(settings.countdown, 0, -1):
-                            update(f"{prefix}: dựng đếm ngược {remaining} giây…")
-                            picture = directory / f"{number}-count-{remaining}.png"
-                            frame(row, number, len(rows), title, settings, countdown=remaining).save(picture)
-                            video = picture.with_suffix(".mov")
-                            self.segment(picture, video, 1)
-                            segments.append(video)
-                            question_frames += 30
-                            update(f"{prefix}: đã dựng đếm ngược {remaining} giây", increment=1)
-                    audio = directory / f"{number}-{phase}.wav"
-                    label = "câu hỏi" if phase == "question" else "đáp án"
-                    update(f"{prefix}: tạo giọng {label}…" if settings.speech else f"{prefix}: chuẩn bị {label}…")
-                    if settings.speech:
-                        asyncio.run(self.speech(narration, audio, directory, lambda fraction: update(f"{prefix}: tạo giọng {label}…", fraction=fraction * 0.9)))
-                        duration = self.audio_duration(audio) + 0.5
+                from content_timeline import plan_item, prepare_scene
+                from content_renderer import render_scene
+                scenes = plan_item(row, settings)
+                for scene_index, scene in enumerate(scenes):
+                    self.check()
+                    update(f"{prefix}: {scene.label or scene.phase}")
+                    prepared = prepare_scene(self, scene, directory, f"{number}-{scene_index}", number)
+                    duration, audio = prepared.seconds, prepared.audio
+                    picture = directory / f"{number}-{scene_index}.png"
+                    if row.get("type", "multiple_choice") == "multiple_choice":
+                        frame(row, number, len(rows), title, settings, reveal=scene.phase == "answer", countdown=scene.countdown).save(picture)
                     else:
-                        duration = max(3, min(12, len(plain(narration)) / 18))
-                    update(f"{prefix}: dựng video {label}…", increment=1)
-                    picture = directory / f"{number}-{phase}.png"
-                    frame(row, number, len(rows), title, settings, reveal=phase == "answer").save(picture)
+                        render_scene(row, scene, number, len(rows), title, settings).save(picture)
                     video = picture.with_suffix(".mov")
-                    self.segment(picture, video, duration, audio if settings.speech else None)
+                    self.segment(picture, video, duration, audio)
                     segments.append(video)
                     question_frames += math.ceil(duration * 30)
-                    update(f"{prefix}: đã dựng {label}", increment=1)
+                    update(f"{prefix}: {scene.label or scene.phase} ({duration:.1f}s)", increment=1)
             update("Tạo giọng kêu gọi theo dõi…")
-            audio = directory / "ending.wav"
-            duration = 3.0
-            if settings.speech:
-                asyncio.run(self.speech("theo dõi một chút english để học thêm một chút tiếng anh mỗi ngày nhé!", audio, directory))
-                duration = max(duration, self.audio_duration(audio) + 0.2)
-            update("Dựng ảnh kết thúc…", increment=1)
+            from content_timeline import ending_scene, prepare_scene
+            from content_renderer import render_ending
+            prepared = prepare_scene(self, ending_scene(), directory, "ending", len(rows))
+            audio, duration = prepared.audio, prepared.seconds
             picture = directory / "ending.png"
-            with Image.open(Path(__file__).resolve().parent / "assets" / "ending-img.png") as source:
-                # Keep the entire artwork visible without stretching or cropping.
-                artwork = ImageOps.exif_transpose(source).convert("RGB")
-                ImageOps.pad(artwork, (settings.width, settings.height),
-                             method=Image.Resampling.LANCZOS,
-                             color=artwork.getpixel((0, 0))).save(picture)
+            render_ending(settings).save(picture)
             video = picture.with_suffix(".mov")
             ending_frames = math.ceil(duration * 30)
+            self.duration = (question_frames + ending_frames) / 30
             self.segment(picture, video, duration, audio if settings.speech else None)
             segments.append(video)
             update("Đã dựng đoạn kết", increment=1)

@@ -37,6 +37,19 @@ def icon(name, color="#7c8793", size=18):
         line([(10,11),(15,14),(10,17),(10,11)])
     elif name == "play":
         line([(8,4),(20,12),(8,20),(8,4)])
+    elif name == "stop":
+        rect(6,6,18,18,2)
+    elif name == "plus":
+        line([(12,5),(12,19)]); line([(5,12),(19,12)])
+    elif name == "edit":
+        line([(14,4),(20,10),(10,20),(4,21),(5,15),(17,3),(20,6)])
+    elif name == "copy":
+        rect(8,8,21,21,2); line([(16,4),(4,4),(4,16)])
+    elif name == "trash":
+        line([(4,6),(20,6)]); line([(9,3),(15,3)]); line([(6,6),(7,21),(17,21),(18,6)])
+        line([(10,10),(10,17)]); line([(14,10),(14,17)])
+    elif name in ("up", "down"):
+        line([(6,15),(12,9),(18,15)] if name == "up" else [(6,9),(12,15),(18,9)])
     elif name == "speaker":
         line([(3,9),(7,9),(12,5),(12,19),(7,15),(3,15),(3,9)])
         d.arc((9*scale,6*scale,21*scale,18*scale),-50,50,fill=color,width=stroke)

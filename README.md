@@ -1,8 +1,8 @@
 # Quiz Studio cho Windows
 
-Repository chứa mã nguồn và JSON mẫu; không chứa thư viện cài đặt, video xuất hay bản `.exe`. Sau khi clone, cài Python 3.11 trở lên rồi chạy `run.bat` để cài thư viện và mở app từ mã nguồn. Chạy `build.bat` để tạo bản `.exe` tại `release-clear/QuizStudio`.
+Repository chứa mã nguồn và JSON mẫu; không chứa thư viện cài đặt, video xuất hay bản `.exe`. Sau khi clone, cài Python 3.11 trở lên rồi chạy `run.bat` để cài thư viện và mở app từ mã nguồn. Chạy `build.bat` để tạo bản `.exe` tại `release-layout/QuizStudio`.
 
-Nhấp đúp **Mo-QuizStudio.bat** để mở bản mới nhất tại `release-clear/QuizStudio/QuizStudio.exe`. Khi chuyển sang máy khác, sao chép cả thư mục `release-clear/QuizStudio`, bao gồm `_internal`. Không chạy file trong thư mục `build`: đó là file đóng gói trung gian.
+Nhấp đúp **Mo-QuizStudio.bat** để mở bản mới nhất tại `release-layout/QuizStudio/QuizStudio.exe`. Khi chuyển sang máy khác, sao chép cả thư mục `release-layout/QuizStudio`, bao gồm `_internal`. Không chạy file trong thư mục `build`: đó là file đóng gói trung gian.
 
 ## Tạo video
 
@@ -27,6 +27,8 @@ Giọng Google Việt/Anh là mặc định và cần Internet. Giọng Edge nam
 
 ## JSON
 
+App luôn mở ở dạng **Trắc nghiệm ABCD**. Có bộ chọn 11 dạng học và video tổng hợp; mỗi dạng giữ bản nháp riêng trong phiên. Xem [tài liệu JSON v2 và editor](docs/content-v2.md), [JSON Schema](docs/content-v2.schema.json) và [các mẫu sẵn dùng](examples/v2). Chạy `.venv\Scripts\python.exe app.py` để dùng mã nguồn mới; bản exe cũ cần đóng gói lại.
+
 Nhận mảng câu hỏi hoặc `{ "title": "...", "questions": [...] }`. `question`, `options` (2–6 chuỗi) và đáp án là bắt buộc. `answer` nhận A–F, nguyên văn lựa chọn hoặc số nguyên từ **0**; cũng nhận `correct_answer`/`answer_index`. `explanation` không bắt buộc. `subject` và `lesson` giúp tự nhận diện môn học; sau đó xét tiêu đề và thẻ `[en]`. Môn chưa nhận diện dùng mẫu Quiz nhiều màu. Mẫu này cũng nhận `grade`/`class` để hiển thị lớp.
 
 ## Mã nguồn và đóng gói
@@ -35,7 +37,7 @@ Nhận mảng câu hỏi hoặc `{ "title": "...", "questions": [...] }`. `quest
 - `engine.py`, `video_themes.py`, `video_classic.py`: giọng đọc, xuất MP4 và các mẫu video.
 - `preferences.py`: lưu cài đặt người dùng, ảnh nền và nhạc nền.
 - `requirements.txt`, `.venv`: thư viện chạy từ mã nguồn; `run.bat` hỗ trợ khởi động.
-- `build.bat`: đóng gói bản mới vào `release-clear`; đóng app trước khi đóng gói lại.
+- `build.bat`: đóng gói bản mới vào `release-layout`; đóng app trước khi đóng gói lại.
 - `test_*.py`: kiểm tra dữ liệu, render, chọn mẫu, watermark và lưu ảnh nền.
 
 Chạy kiểm tra: `.venv\Scripts\python.exe -m unittest discover -v`. Chạy từ mã nguồn cần Python 3.11 trở lên.

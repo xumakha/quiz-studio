@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "title": "MỘT CHÚT ENGLISH",
+  "mode": "listening",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "listening-01",
+      "type": "listening",
+      "subject": "NGHE ĐOÁN CÂU",
+      "audio_text": "[en]How are you today?[/en]",
+      "transcript": "[en]How are you today?[/en]",
+      "translation": "Hôm nay bạn thế nào?",
+      "replay_count": 1,
+      "explanation": "Câu hỏi thăm sức khỏe."
+    }
+  ]
+}
