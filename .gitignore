@@ -7,6 +7,8 @@ release/
 release-modern/
 release-fixed/
 release-clear/
+release-ending/
+release-ending-fade/
 *.spec
 !QuizStudio.spec
 outputs/

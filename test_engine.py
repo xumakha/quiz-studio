@@ -30,7 +30,7 @@ class EngineTests(unittest.TestCase):
             {"question": "Test?", "options": ["first", "second", "third"],
              "answer": "C", "explanation": "Explanation to read when enabled."}
         ] * 2))
-        outro = "Hãy theo dõi một chút english để học thêm một chút tiếng Anh mỗi ngày nhé!"
+        outro = "theo dõi một chút english để học thêm một chút tiếng anh mỗi ngày nhé!"
         for voice, read_explanation in [(voice, enabled)
                                        for voice in ["vi-VN-HoaiMyNeural", "en-US-JennyNeural", "google:en"]
                                        for enabled in [False, True]]:
@@ -48,15 +48,20 @@ class EngineTests(unittest.TestCase):
                                              countdown=0, width=180, height=320))
                 with patch.object(renderer, "speech", side_effect=capture), \
                      patch.object(renderer, "audio_duration", return_value=1), \
-                     patch.object(renderer, "segment"), \
+                     patch.object(renderer, "segment") as segment, \
                      patch.object(renderer, "run", side_effect=fake_run):
                     renderer.render("Quiz", rows, Path(directory) / "video.mp4")
                 answer = "The answer is C." if voice in ["en-US-JennyNeural", "google:en"] else "Đáp án đúng là C."
                 if read_explanation:
                     answer += " " + rows[0]["explanation"]
                 self.assertEqual(spoken[1], answer)
-                self.assertEqual(spoken[3], f"{answer} {outro}")
+                self.assertEqual(spoken[3], answer)
+                self.assertEqual(spoken[4], outro)
                 self.assertEqual(sum(outro in text for text in spoken), 1)
+                ending = segment.call_args_list[-1].args
+                self.assertEqual(ending[0].name, "ending.png")
+                self.assertEqual(ending[2], 3.0)
+                self.assertEqual(ending[3].name, "ending.wav")
 
     def test_audio_stays_continuous_across_countdown_and_answer(self):
         class OfflineRenderer(Renderer):
@@ -99,9 +104,9 @@ class EngineTests(unittest.TestCase):
                         samples = array.array("h", stream.readframes(stream.getnframes()))
                         sample_rate = stream.getframerate()
                     phase_seconds = math.ceil((.537 + .5) * 30) / 30
-                    expected_seconds = 2 * (2 * phase_seconds + 2)
+                    expected_seconds = 2 * (2 * phase_seconds + 2) + 3
                     self.assertAlmostEqual(len(samples) / sample_rate, expected_seconds, delta=.04)
-                    for phase_start in [0, phase_seconds + 2, 2 * phase_seconds + 2, 3 * phase_seconds + 4]:
+                    for phase_start in [0, phase_seconds + 2, 2 * phase_seconds + 2, 3 * phase_seconds + 4, expected_seconds - 3]:
                         start = round((phase_start + .2) * sample_rate)
                         chunk = samples[start:start + sample_rate // 10]
                         rms = math.sqrt(sum(value * value for value in chunk) / len(chunk))
@@ -109,10 +114,21 @@ class EngineTests(unittest.TestCase):
                     if music_source:
                         # Scan every 10 ms, including all joins and loop boundaries.
                         window = sample_rate // 100
-                        for start in range(window, len(samples) - 2 * window, window):
+                        # AAC decoding can append padding beyond the video timeline.
+                        ending_start = expected_seconds - 3
+                        for start in range(window, round(ending_start * sample_rate) - 2 * window, window):
                             chunk = samples[start:start + window]
                             rms = math.sqrt(sum(value * value for value in chunk) / len(chunk))
                             self.assertGreater(rms, 800, f"Audio dipped at {start / sample_rate:.3f}s")
+                        def ending_rms(offset):
+                            start = round((ending_start + offset) * sample_rate)
+                            chunk = samples[start:start + sample_rate // 10]
+                            return math.sqrt(sum(value * value for value in chunk) / len(chunk))
+                        # Narration ends at .537s; measure only music after that.
+                        early, middle, late = (ending_rms(offset) for offset in [0.8, 1.8, 2.88])
+                        self.assertGreater(early, middle * 1.5)
+                        self.assertGreater(middle, late * 5)
+                        self.assertLess(late, 100)
 
     def test_video_content_leaves_bottom_clear_for_page_and_caption(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -13,7 +13,7 @@ from pathlib import Path
 import edge_tts
 import edge_tts.communicate
 import imageio_ffmpeg
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 from gtts import gTTS
 
 # Retain certificate verification and additionally trust the OS certificate store
@@ -235,7 +235,7 @@ class Renderer:
         settings = replace(self.settings, template=video_template(rows, title, self.settings.template))
         destination = Path(output).resolve()
         destination.parent.mkdir(parents=True, exist_ok=True)
-        total_steps = len(rows) * (settings.countdown + 4) + 2 + bool(settings.music)
+        total_steps = len(rows) * (settings.countdown + 4) + 4 + bool(settings.music)
         completed = 0
         def update(message, increment=0, fraction=0):
             nonlocal completed
@@ -248,6 +248,7 @@ class Renderer:
         with tempfile.TemporaryDirectory(prefix="quiz-", dir=destination.parent) as temp:
             directory = Path(temp)
             segments = []
+            question_frames = 0
             for number, row in enumerate(rows, 1):
                 self.check()
                 prefix = f"Câu {number}/{len(rows)}"
@@ -259,8 +260,6 @@ class Renderer:
                     answer_text = f"The answer is {chr(65 + row['answer_index'])}."
                 if settings.read_explanation and row.get("explanation", "").strip():
                     answer_text += " " + row["explanation"].strip()
-                if number == len(rows):
-                    answer_text += " Hãy theo dõi một chút english để học thêm một chút tiếng Anh mỗi ngày nhé!"
                 for phase, narration in [("question", text), ("answer", answer_text)]:
                     if phase == "answer":
                         for remaining in range(settings.countdown, 0, -1):
@@ -270,6 +269,7 @@ class Renderer:
                             video = picture.with_suffix(".mov")
                             self.segment(picture, video, 1)
                             segments.append(video)
+                            question_frames += 30
                             update(f"{prefix}: đã dựng đếm ngược {remaining} giây", increment=1)
                     audio = directory / f"{number}-{phase}.wav"
                     label = "câu hỏi" if phase == "question" else "đáp án"
@@ -285,7 +285,27 @@ class Renderer:
                     video = picture.with_suffix(".mov")
                     self.segment(picture, video, duration, audio if settings.speech else None)
                     segments.append(video)
+                    question_frames += math.ceil(duration * 30)
                     update(f"{prefix}: đã dựng {label}", increment=1)
+            update("Tạo giọng kêu gọi theo dõi…")
+            audio = directory / "ending.wav"
+            duration = 3.0
+            if settings.speech:
+                asyncio.run(self.speech("theo dõi một chút english để học thêm một chút tiếng anh mỗi ngày nhé!", audio, directory))
+                duration = max(duration, self.audio_duration(audio) + 0.2)
+            update("Dựng ảnh kết thúc…", increment=1)
+            picture = directory / "ending.png"
+            with Image.open(Path(__file__).resolve().parent / "assets" / "ending-img.png") as source:
+                # Keep the entire artwork visible without stretching or cropping.
+                artwork = ImageOps.exif_transpose(source).convert("RGB")
+                ImageOps.pad(artwork, (settings.width, settings.height),
+                             method=Image.Resampling.LANCZOS,
+                             color=artwork.getpixel((0, 0))).save(picture)
+            video = picture.with_suffix(".mov")
+            ending_frames = math.ceil(duration * 30)
+            self.segment(picture, video, duration, audio if settings.speech else None)
+            segments.append(video)
+            update("Đã dựng đoạn kết", increment=1)
             update("Ghép các câu hỏi và hoàn thiện MP4…")
             listing = directory / "segments.txt"
             listing.write_text("\n".join(f"file '{p.name}'" for p in segments), encoding="utf-8")
@@ -296,7 +316,8 @@ class Renderer:
             if settings.music:
                 update("Đang trộn nhạc nền…")
                 self.run(["-i", joined, "-stream_loop", "-1", "-i", settings.music, "-filter_complex",
-                          f"[0:a]asetpts=N/SR/TB[voice];[1:a]aresample=44100,asetpts=N/SR/TB,volume={settings.music_volume}[bg];"
+                          f"[0:a]asetpts=N/SR/TB[voice];[1:a]aresample=44100,asetpts=N/SR/TB,volume={settings.music_volume},"
+                          f"afade=t=out:ss={question_frames * 1470}:ns={ending_frames * 1470}[bg];"
                           "[voice][bg]amix=inputs=2:duration=first:normalize=0:dropout_transition=0[a]",
                           "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac",
                           "-ar", "44100", "-ac", "2", "-movflags", "+faststart", finished])
