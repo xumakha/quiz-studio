@@ -55,7 +55,7 @@ class ContentTests(unittest.TestCase):
                 render_scene(rows[0], scene, 10, 10, title, Settings(watermark_enabled=False))
         self.assertTrue(all(size >= 30 for _, size in calls))
         # The instruction occupies multiple lines before the main sentence.
-        self.assertGreater(len({xy[1] for xy, _ in calls if 330 <= xy[1] < 450}), 1)
+        self.assertGreater(len({xy[1] for xy, _ in calls if 418 <= xy[1] < 650}), 1)
 
     def test_layout_failure_precedes_speech_and_preserves_output(self):
         doc = sample_document("fill_blank")
@@ -80,6 +80,21 @@ class ContentTests(unittest.TestCase):
                 for row in rows:
                     for scene in plan_item(row, settings):
                         self.assertEqual(render_scene(row, scene, 1, len(rows), title, settings).size, (180, 320))
+
+    def test_new_layouts_keep_header_artwork_and_clear_mobile_footer(self):
+        from PIL import Image
+        settings = Settings(speech=False, watermark_enabled=False, width=180, height=320)
+        for kind in REGISTRY:
+            if kind == "multiple_choice":
+                continue
+            title, rows, _ = self.parse(sample_document(kind))
+            for scene in (plan_item(rows[0], settings)[0], plan_item(rows[0], settings)[-1]):
+                with self.subTest(kind=kind, phase=scene.phase):
+                    image = render_scene(rows[0], scene, 1, 1, title, settings)
+                    header = image.crop((0, 24, 180, 44))
+                    self.assertNotEqual(header.tobytes(), Image.new("RGB", header.size, "#e6f1f8").tobytes())
+                    footer = image.crop((0, 263, 180, 320))
+                    self.assertEqual(footer.tobytes(), Image.new("RGB", footer.size, "#e6f1f8").tobytes())
 
     def test_listening_and_missing_dialogue_never_leak_before_reveal(self):
         for kind, secret in [("listening", "How are you today?"), ("dialogue", "I'm fine, thanks.")]:

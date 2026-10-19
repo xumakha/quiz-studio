@@ -1,8 +1,8 @@
 @echo off
 cd /d "%~dp0"
-if exist "release-layout\QuizStudio\QuizStudio.exe" (
-  if exist "release-layout\QuizStudio\_internal\_tcl_data\init.tcl" (
-    start "" "release-layout\QuizStudio\QuizStudio.exe"
+if exist "release-samples\QuizStudio\QuizStudio.exe" (
+  if exist "release-samples\QuizStudio\_internal\_tcl_data\init.tcl" (
+    start "" "release-samples\QuizStudio\QuizStudio.exe"
     exit /b
   )
 )

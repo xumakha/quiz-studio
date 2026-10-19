@@ -19,8 +19,11 @@ class AppContentTests(unittest.TestCase):
                 original = app.content_editor.source()
                 editor = app.content_editor
                 editor.variable.set(LABELS["listening"]); editor.switch()
-                self.assertEqual(editor.source(), "")
-                editor.sample()
+                self.assertEqual(json.loads(editor.source())["mode"], "listening")
+                self.assertTrue(app.rows and app.preview_image)
+                draft = json.loads(editor.source())
+                draft["title"] = "My edited listening draft"
+                editor.write(json.dumps(draft, ensure_ascii=False))
                 listening = editor.source()
                 editor.variable.set(LABELS[DEFAULT_MODE]); editor.switch()
                 self.assertEqual(editor.source(), original)
@@ -46,12 +49,14 @@ class AppContentTests(unittest.TestCase):
                 self.assertEqual(editor.source(), '{"invalid":')
                 editor.variable.set(LABELS["fill_blank"]); editor.switch()
                 editor.add()
-                added = json.loads(editor.source())["items"][0]
+                added = json.loads(editor.source())["items"][-1]
                 self.assertEqual(added["question"], "")
                 self.assertEqual(added["answer"], "")
                 forms = [w for w in app.winfo_children() if isinstance(w, tk.Toplevel)]
                 self.assertEqual(len(forms), 1)
                 forms[0].destroy()
+                editor.variable.set(LABELS["mixed"]); editor.switch()
+                self.assertEqual(editor.source(), '{"invalid":')
             finally:
                 app.close()
             app = App(data_dir=directory)

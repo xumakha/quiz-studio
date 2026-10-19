@@ -1,6 +1,6 @@
 """Text-first learning layouts sharing exactly the export scene representation."""
 from PIL import Image, ImageDraw, ImageOps
-from content_types import plain
+from content_types import plain, LABELS
 
 
 def render_ending(settings):
@@ -13,23 +13,31 @@ def render_ending(settings):
 
 def render_scene(row, scene, number, total, title, settings):
     from engine import fitted, font, wrap
-    from branding import add_logo
+    from branding import add_logo, compose_content, CONTENT_MARGIN_X
     if row.get("type", "multiple_choice") == "multiple_choice":
         from video_themes import render_frame
         return render_frame(row, number, total, title, settings, scene.phase == "answer", scene.countdown)
-    image = Image.new("RGB", (1080, 1920), "#fff6d7")
+    image = Image.new("RGB", (1080, 1920), "#e6f1f8")
     if settings.background:
         with Image.open(settings.background) as source:
-            image = ImageOps.fit(source.convert("RGB"), image.size)
+            image = ImageOps.fit(ImageOps.exif_transpose(source).convert("RGB"), image.size)
         image = Image.blend(image, Image.new("RGB", image.size, "#081022"), settings.background_dim / 100)
+    background_image = image
+    image = Image.new("RGBA", background_image.size)
+    if settings.watermark_enabled:
+        add_logo(image, watermark=True)
     draw = ImageDraw.Draw(image)
-    def block(text, y, height, size=58, color="#112c50", background=None, highlight=None, field="nội dung"):
+    margin = CONTENT_MARGIN_X
+    def block(text, y, height, size=58, color="#112c50", background=None, highlight=None, field="nội dung", left=margin, right=1080-margin, align="center", bold=True):
         if not plain(text).strip():
             return
         if background:
-            draw.rounded_rectangle((64, y, 1016, y + height), radius=24, fill=background)
+            draw.rounded_rectangle((left, y+7, right, y+height+7), radius=24, fill=(28, 66, 103, 15))
+            draw.rounded_rectangle((left, y, right, y + height), radius=24, fill=background, outline=(70, 120, 155, 24), width=2)
+        width = right-left-56
+        center = (left+right)/2
         try:
-            face, lines, step = fitted(draw, text, size, 884, height-32, True)
+            face, lines, step = fitted(draw, text, size, width, height-32, bold)
         except ValueError as error:
             raise ValueError(f"Câu {number}: {field} quá dài để hiển thị rõ. Hãy rút gọn hoặc chia nội dung.") from error
         if face.size < 30:
@@ -47,7 +55,7 @@ def render_scene(row, scene, number, total, title, settings):
                     selected_range = (left-offset, right-offset)
             if selected_range:
                 first, last = selected_range
-                x = 540 - draw.textlength(line, font=face)/2
+                x = center - draw.textlength(line, font=face)/2 if align == "center" else left+28
                 baseline = top - draw.textbbox((0, 0), line, font=face, anchor="ls")[1]
                 tone = "#cc4534" if scene.phase == "wrong" else "#1267b1"
                 # Draw every glyph once, using the same baseline for all three runs.
@@ -61,27 +69,36 @@ def render_scene(row, scene, number, total, title, settings):
                 underline_y = baseline + face.getmetrics()[1] + 3
                 draw.line((left_x, underline_y, right_x, underline_y), fill=tone, width=4)
             else:
-                draw.text((540, top), line, font=face, anchor="mt", fill=color)
+                draw.text((center if align == "center" else left+28, top), line, font=face, anchor="mt" if align == "center" else "lt", fill=color)
             cursor = max(cursor, offset+len(line))
             top += step
-    block(title, 170, 140, 52, background="#ffdc65", field="tiêu đề")
-    heading = f"{number}/{total} - {scene.label}"
-    heading_height = min(300, max(90, len(wrap(draw, heading, font(32, True), 884))*44+32))
-    block(heading, 330, heading_height, 32, field="hướng dẫn")
-    content_top = max(450, 330 + heading_height + 30)
     kind = row["type"]
+    draw.rounded_rectangle((margin, 178, 754, 238), radius=13, fill=(255, 255, 255, 220))
+    draw.text((margin+20, 208), LABELS[kind].upper(), font=font(30, True), anchor="lm", fill="#42637f")
+    draw.rounded_rectangle((787, 178, 1080-margin, 238), radius=13, fill=(255, 255, 255, 220))
+    draw.text((893, 208), f"{number:02d} / {total:02d}", font=font(31, True), anchor="mm", fill="#42637f")
+    block(title, 260, 130, 52, color="#665125", background="#ffdf7d", field="tiêu đề")
+    heading = scene.label
+    heading_height = min(260, max(90, len(wrap(draw, heading, font(32, True), 864))*44+32))
+    block(heading, 418, heading_height, 32, color="#58758c", field="hướng dẫn")
+    content_top = max(530, 418 + heading_height + 22)
     if kind == "dialogue":
         turns = scene.text.split("\n")
         height = min(180, min(640, 1130-content_top) // max(1, len(turns)) - 10)
         for i, turn in enumerate(turns):
-            block(turn, content_top+i*(height+10), height, 42, background="#dceeff" if i % 2 == 0 else "#ffecaa")
+            block(turn, content_top+i*(height+10), height, 42, background="#f8fcff" if i % 2 == 0 else "#fff0b9",
+                  left=margin if i % 2 == 0 else margin+56, right=1080-margin-56 if i % 2 == 0 else 1080-margin, align="left")
     elif kind == "word_order" and scene.phase in ("question", "countdown", "arrange"):
         tokens = row["tokens"]
-        height = min(160, min(640, 1130-content_top) // max(1, len(tokens)) - 8)
+        import math
+        rows = math.ceil(len(tokens)/2)
+        height = min(136, (1100-content_top)//max(1, rows)-20)
         for i, token in enumerate(tokens):
             target = row["answer_order"].index(token["id"])
-            position = i + (target-i)*scene.progress
-            block(token["text"], content_top+position*(height+8), height, 44, background="#dceeff")
+            column = i % 2 + (target % 2-i % 2)*scene.progress
+            line = i//2 + (target//2-i//2)*scene.progress
+            left = margin+column*472
+            block(token["text"], content_top+line*(height+20), height, 44, background="#f8fcff", left=left, right=left+448)
     else:
         highlight = None
         if kind == "error_correction" and scene.phase in ("wrong", "answer"):
@@ -93,17 +110,22 @@ def render_scene(row, scene, number, total, title, settings):
         elif kind == "fill_blank" and scene.phase == "answer":
             start = plain(row["question"]).index("___")
             highlight = (start, start+len(plain(row["answer"])))
-        block(scene.text, content_top, 840-content_top, 68, highlight=highlight, field="câu hỏi/đáp án")
+        block(scene.text, content_top, 950-content_top, 68, highlight=highlight, field="câu hỏi/đáp án")
     if scene.detail:
-        block(scene.detail, 910, 220, 44, background="#e0efff", field="phần bật mí")
+        block(scene.detail, 990, 180, 54 if kind == "error_correction" else 44, color="#1267b1", background="#f8fcff", field="phần bật mí")
     if scene.phase == "answer" and row.get("explanation"):
-        block(row["explanation"], 1160, 230, 40, background="#fffdf4", field="giải thích")
+        block(row["explanation"], 1190, 210, 40, background="#fff8df", field="giải thích", bold=False)
     if scene.countdown is not None:
-        block(f"{scene.countdown} giây", 1190, 150, 70, background="#ffdc65")
+        block(f"{scene.countdown} giây", 1160, 160, 64, background="#ffdf7d")
+        draw.rounded_rectangle((margin+30, 1344, 1050-margin, 1356), radius=6, fill="#c9dce9")
+        seconds = row.get("thinking_seconds", row.get("_default_thinking_seconds", settings.countdown))
+        fraction = min(1, max(0, scene.countdown/max(1, seconds)))
+        if fraction:
+            draw.rounded_rectangle((margin+30, 1344, margin+30+(920-60)*fraction, 1356), radius=6, fill="#3887bb")
     if settings.watermark_enabled:
-        add_logo(image, watermark=True)
-        block(settings.brand, 1430, 90, 30)
-    return image.resize((settings.width, settings.height), Image.Resampling.LANCZOS)
+        block(settings.brand, 1400, 76, 30)
+    add_logo(image)
+    return compose_content(background_image, image, settings)
 
 
 def validate_layout(title, rows, settings, check=lambda: None):

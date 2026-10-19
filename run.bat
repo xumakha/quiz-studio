@@ -1,6 +1,6 @@
 @echo off
 cd /d "%~dp0"
-if exist "release-layout\QuizStudio\QuizStudio.exe" (
+if exist "release-samples\QuizStudio\QuizStudio.exe" (
   call Mo-QuizStudio.bat
   exit /b
 )

@@ -11,6 +11,7 @@ release-dialogue/
 release-ui/
 release-highlight/
 release-layout/
+release-samples/
 release-ending/
 release-ending-fade/
 *.spec

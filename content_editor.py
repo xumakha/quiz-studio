@@ -66,7 +66,10 @@ class ContentEditor:
         self.drafts[self.mode] = self.source()
         self.mode = next(k for k, label in LABELS.items() if label == self.variable.get())
         self.guide.configure(text="Bản nháp riêng cho từng dạng. Dùng [en] cho đoạn tiếng Anh.")
-        self.write(self.drafts.get(self.mode, ""))
+        if self.mode in self.drafts:
+            self.write(self.drafts[self.mode])
+        else:
+            self.sample()
 
     def detect(self, mode):
         if mode != self.mode:
