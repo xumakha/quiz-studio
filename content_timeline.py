@@ -13,6 +13,7 @@ class Scene:
     detail: str = ""
     progress: float = 0
     speech_parts: tuple = ()  # (text, English voice override); narrator uses None.
+    trailing_silence: float = 0.5
 
 
 @dataclass(frozen=True)
@@ -50,7 +51,7 @@ def prepare_scene(renderer, scene, directory, name, item_number):
                               "-map", "[out]", "-ar", "44100", "-ac", "2", audio])
             else:
                 asyncio.run(renderer.speech(scene.narration, audio, directory))
-            duration = renderer.audio_duration(audio) + 0.5
+            duration = renderer.audio_duration(audio) + scene.trailing_silence
             if scene.phase == "ending":
                 duration = max(3, duration)
         except Cancelled:
@@ -184,10 +185,12 @@ def phrase_lesson(row, settings):
 def guess_word(row, settings):
     from content_types import masked_word
     question = ". ".join(filter(None, [row["meaning_vi"], row.get("context_hint", "")]))
+    voice = settings.english_voice if settings.english_voice.startswith("en-US-") else "en-US-JennyNeural"
     scenes = [Scene("question", masked_word(row["answer"]), question, "Chuẩn bị"),
-              Scene("answer", row["answer"].upper(), en(row["answer"]), "Đáp án", detail=row.get("ipa", ""))]
+              Scene("answer", row["answer"].upper(), "", "Đáp án", detail=row.get("ipa", ""), trailing_silence=1.0)]
     explanation = row["explanation"] if settings.read_explanation else ""
-    scenes.append(Scene("explanation", row["answer"].upper(), explanation, "Giải thích", detail=row["explanation"]))
+    scenes.append(Scene("explanation", row["answer"].upper(), explanation, "Giải thích", detail=row["explanation"],
+                        speech_parts=((explanation, voice),) if explanation else ()))
     if row.get("example"):
         scenes.append(Scene("example", row["example"], english(row["example"]), "Ví dụ", detail=row.get("example_translation", "")))
         if settings.read_explanation and row.get("example_translation"):
@@ -220,6 +223,8 @@ def plan_item(row, settings):
 
 
 def estimated_seconds(scene):
+    if scene.phase == "answer" and not scene.narration and scene.trailing_silence == 1.0:
+        return 1.0
     if scene.phase == "ending":
         return 3
     if scene.countdown is not None:
@@ -228,4 +233,4 @@ def estimated_seconds(scene):
         return 0.8
     if scene.phase == "arrange":
         return 1/30
-    return max(3, len(plain(scene.narration or scene.text)) / 14 + 0.5)
+    return max(3, len(plain(scene.narration or scene.text)) / 14 + scene.trailing_silence)

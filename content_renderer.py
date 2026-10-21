@@ -3,6 +3,18 @@ from PIL import Image, ImageDraw, ImageOps
 from content_types import plain, LABELS
 
 
+def ipa_font(size):
+    """Use a Unicode font with IPA, combining marks and stress symbols."""
+    import os
+    from pathlib import Path
+    from PIL import ImageFont
+    directory = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts"
+    for name in ("segoeui.ttf", "arial.ttf"):
+        if (directory / name).is_file():
+            return ImageFont.truetype(str(directory / name), size)
+    raise ValueError("Thiếu font Unicode hỗ trợ IPA (Segoe UI hoặc Arial).")
+
+
 def render_ending(settings):
     from pathlib import Path
     with Image.open(Path(__file__).resolve().parent / "assets" / "ending-img.png") as source:
@@ -85,21 +97,30 @@ def render_scene(row, scene, number, total, title, settings):
     if kind == "guess_word":
         block(row.get("level", ""), 410, 100, 32, color="#58758c")
         block(row["meaning_vi"], 535, 190, 76, field="nghĩa tiếng Việt")
+        if row.get("context_hint", "").strip():
+            block(row["context_hint"], 715, 100, 32, color="#58758c", field="chú thích nghĩa tiếng Việt", bold=False)
         # Fit the complete mask on one line, including twenty-letter words.
         word = plain(scene.text)
         size = 76
         while size > 30 and draw.textlength(word, font=font(size, True)) > 864:
             size -= 1
         if scene.phase in ("question", "countdown", "answer", "explanation"):
-            block(word, 750, 140, size, color="#1267b1", background="#f8fcff", field="từ cần đoán")
+            block(word, 830 if row.get("context_hint", "").strip() else 750, 140, size, color="#1267b1", background="#f8fcff", field="từ cần đoán")
         else:
-            block(word, 750, 210, 52, field="ví dụ")
-        hint = " · ".join(filter(None, [row.get("part_of_speech", ""), row.get("context_hint", "")]))
-        block(hint, 920, 90, 32, color="#58758c", field="gợi ý")
+            block(word, 830 if row.get("context_hint", "").strip() else 750, 210, 52, field="ví dụ")
+        if scene.phase in ("answer", "explanation") and row.get("ipa", "").strip():
+            ipa = row["ipa"].strip()
+            ipa_size = 48
+            while ipa_size > 34 and draw.textlength(ipa, font=ipa_font(ipa_size)) > 864:
+                ipa_size -= 1
+            face = ipa_font(ipa_size)
+            if draw.textlength(ipa, font=face) > 864:
+                raise ValueError(f"Câu {number}: IPA quá dài để hiển thị rõ.")
+            draw.text((540, 995 if row.get("context_hint", "").strip() else 915), ipa, font=face, anchor="mt", fill="#42637f")
         if scene.phase == "question":
             block("Chuẩn bị", 1160, 110, 48)
-        elif scene.phase in ("answer", "explanation", "example"):
-            block(scene.detail, 1040, 300, 42, background="#fff8df", field="giải thích / ví dụ", bold=False)
+        elif scene.phase in ("explanation", "example"):
+            block(scene.detail, 1080 if row.get("context_hint", "").strip() else 1040, 260 if row.get("context_hint", "").strip() else 300, 42, background="#fff8df", field="giải thích / ví dụ", bold=False)
     elif kind == "dialogue":
         turns = scene.text.split("\n")
         height = min(180, min(640, 1130-content_top) // max(1, len(turns)) - 10)

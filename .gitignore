@@ -14,6 +14,7 @@ release-highlight/
 release-layout/
 release-samples/
 release-current/
+release-latest/
 release-ending/
 release-ending-fade/
 *.spec
