@@ -2,6 +2,7 @@
 archive/
 __pycache__/
 build/
+build-current/
 dist/
 release/
 release-modern/
@@ -12,6 +13,7 @@ release-ui/
 release-highlight/
 release-layout/
 release-samples/
+release-current/
 release-ending/
 release-ending-fade/
 *.spec

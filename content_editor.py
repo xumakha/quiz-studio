@@ -214,11 +214,11 @@ class ContentEditor:
         expanded = dict(item)
         for field in ("prompt", "explanation", "thinking_seconds"):
             expanded.setdefault(field, "")
-        optional = {"fill_blank": ("completed_sentence",), "translation": ("show_alternatives",), "listening": ("replay_count",), "true_false": ("correction",), "sentence_upgrade": ("example_context",), "phrase_lesson": ("example_translation",)}
+        optional = {"guess_word": ("meaning_vi", "level", "part_of_speech", "context_hint", "ipa", "example", "example_translation"), "fill_blank": ("completed_sentence",), "translation": ("show_alternatives",), "listening": ("replay_count",), "true_false": ("correction",), "sentence_upgrade": ("example_context",), "phrase_lesson": ("example_translation",)}
         for field in optional.get(kind, ()):
             expanded.setdefault(field, False if field == "show_alternatives" else 1 if field == "replay_count" else "")
         field_labels = {
-            "id": "Mã nội dung", "subject": "Chủ đề", "prompt": "Hướng dẫn", "question": "Câu hỏi",
+            "meaning_vi": "Nghĩa tiếng Việt", "level": "Trình độ", "part_of_speech": "Loại từ", "context_hint": "Gợi ý ngữ cảnh", "ipa": "IPA", "id": "Mã nội dung", "subject": "Chủ đề", "prompt": "Hướng dẫn", "question": "Câu hỏi",
             "options": "Các lựa chọn", "answer": "Đáp án", "explanation": "Giải thích",
             "thinking_seconds": "Thời gian suy nghĩ riêng (giây)", "highlight": "Phần cần sửa",
             "completed_sentence": "Câu hoàn chỉnh", "tokens": "Các thẻ từ", "answer_order": "Thứ tự đáp án",

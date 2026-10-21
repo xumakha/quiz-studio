@@ -193,6 +193,16 @@ class Renderer:
         return stderr.decode("utf-8", errors="replace")
 
     async def speech(self, text, target, directory, on_part=lambda fraction: None):
+        # Blanks belong to the picture, never to either speech provider. Clean
+        # before hashing as well so previously cached spoken blanks are bypassed.
+        text = re.sub(r"\s+", " ", re.sub(r"_+", " ", text)).strip()
+        if not re.search(r"\w", plain(text)):
+            import wave
+            with wave.open(str(target), "wb") as output:
+                output.setparams((2, 2, 44100, 0, "NONE", "not compressed"))
+                output.writeframes(bytes(4410 * 4))
+            on_part(1)
+            return
         from preferences import BackgroundStore
         cache = BackgroundStore().directory / "tts-cache"
         cache.mkdir(parents=True, exist_ok=True)

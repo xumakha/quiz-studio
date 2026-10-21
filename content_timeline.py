@@ -181,6 +181,20 @@ def phrase_lesson(row, settings):
             Scene("lesson", row["example"], english(row["example"]) + ". " + row.get("example_translation", ""), "Ví dụ", detail=row.get("example_translation", ""))]
 
 
+def guess_word(row, settings):
+    from content_types import masked_word
+    question = ". ".join(filter(None, [row["meaning_vi"], row.get("context_hint", "")]))
+    scenes = [Scene("question", masked_word(row["answer"]), question, "Chuẩn bị"),
+              Scene("answer", row["answer"].upper(), en(row["answer"]), "Đáp án", detail=row.get("ipa", ""))]
+    explanation = row["explanation"] if settings.read_explanation else ""
+    scenes.append(Scene("explanation", row["answer"].upper(), explanation, "Giải thích", detail=row["explanation"]))
+    if row.get("example"):
+        scenes.append(Scene("example", row["example"], english(row["example"]), "Ví dụ", detail=row.get("example_translation", "")))
+        if settings.read_explanation and row.get("example_translation"):
+            scenes.append(Scene("example", row["example"], row["example_translation"], "Ví dụ", detail=row["example_translation"]))
+    return scenes
+
+
 BUILDERS = {key: globals()[key] for key in REGISTRY}
 
 
@@ -198,7 +212,7 @@ def plan_item(row, settings):
         split = next(i for i, scene in enumerate(scenes) if scene.phase != "question")
         countdown = [Scene("countdown", scenes[split-1].text, "", scenes[split-1].label, n) for n in range(row.get("thinking_seconds", row.get("_default_thinking_seconds", settings.countdown)), 0, -1)]
         scenes[split:split] = countdown
-        if settings.read_explanation and row.get("explanation"):
+        if kind != "guess_word" and settings.read_explanation and row.get("explanation"):
             last = scenes[-1]
             parts = last.speech_parts + ((row["explanation"], None),) if last.speech_parts else ()
             scenes[-1] = replace(last, narration=last.narration + " " + row["explanation"], speech_parts=parts)

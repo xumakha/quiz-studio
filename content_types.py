@@ -18,6 +18,7 @@ def en(text):
 
 
 REGISTRY = {
+    "guess_word": ContentType("Đoán từ qua nghĩa tiếng Việt", ("meaning_vi", "answer", "explanation"), dict(meaning_vi="Hoạt động", answer="activity", level="A2", part_of_speech="noun", context_hint="", ipa="/ækˈtɪv.ə.ti/", explanation="[en]Activity[/en] là danh từ, có nghĩa là hoạt động.", example="[en]Swimming is my favorite activity.[/en]", example_translation="Bơi lội là hoạt động yêu thích của tôi.")),
     "multiple_choice": ContentType("Trắc nghiệm ABCD", ("question",), dict(question=en("She ... a student."), options=list(map(en, ["am", "is", "are", "be"])), answer="B", explanation="Chủ ngữ She dùng is.")),
     "error_correction": ContentType("Tìm lỗi sai", ("question", "answer", "explanation"), dict(question=en("She don't like coffee."), answer=en("She doesn't like coffee."), highlight=dict(wrong="don't", correct="doesn't"), explanation="Chủ ngữ She dùng doesn't.")),
     "fill_blank": ContentType("Điền từ", ("question", "answer", "explanation"), dict(question=en("She ___ a student."), answer=en("is"), explanation="Chủ ngữ She dùng is.")),
@@ -35,6 +36,8 @@ DEFAULT_MODE = "multiple_choice"  # Deliberately never persisted as a user prefe
 
 
 def sample_document(mode):
+    if mode == "guess_word":
+        return guess_word_sample()
     types = list(REGISTRY) if mode == "mixed" else [mode]
     return dict(schema_version=2, title="MỘT CHÚT ENGLISH", mode=mode, settings=dict(thinking_seconds=5),
                 items=[dict(id=f"{key}-01", type=key, subject=REGISTRY[key].label.upper(), **copy.deepcopy(REGISTRY[key].sample)) for key in types])
@@ -84,7 +87,17 @@ def validate_item(row, index):
             require(isinstance(row[field], str), f"{field} phải là chuỗi.")
     if "thinking_seconds" in row:
         seconds(row["thinking_seconds"], prefix + ".thinking_seconds")
-    if kind == "multiple_choice":
+    if kind == "guess_word":
+        for field in ("level", "part_of_speech", "context_hint", "ipa", "example", "example_translation"):
+            if field in row:
+                require(isinstance(row[field], str), f"{field} phải là chuỗi.")
+        row["answer"] = row["answer"].strip()
+        require(bool(re.fullmatch(r"[A-Za-z]{2,20}", row["answer"])), "answer phải là một từ tiếng Anh gồm 2–20 chữ cái A-Z, không chứa khoảng trắng, dấu hoặc thẻ [en].")
+        if "thinking_seconds" in row:
+            require(row["thinking_seconds"] > 0, "thinking_seconds phải lớn hơn 0.")
+        for field in ("meaning_vi", "context_hint", "prompt", "subject"):
+            require(not re.search(r"(?i)(?<![a-z])" + re.escape(row["answer"]) + r"(?![a-z])", row.get(field, "")), f"{field} không được chứa đáp án tiếng Anh.")
+    elif kind == "multiple_choice":
         opts = row.get("options")
         require(isinstance(opts, list) and len(opts) == 4 and all(isinstance(x, str) and x.strip() for x in opts), "options phải có đúng 4 chuỗi không rỗng.")
         require(isinstance(row.get("answer"), str) and row["answer"] in list("ABCD"), "answer phải là A, B, C hoặc D.")
@@ -164,13 +177,19 @@ def normalize(data, legacy_parser):
         seconds(settings["thinking_seconds"], "settings.thinking_seconds")
     rows = [validate_item(copy.deepcopy(row), i) for i, row in enumerate(rows, 1)]
     types = {row["type"] for row in rows}
-    mode = data.get("mode", next(iter(types)) if len(types) == 1 else "mixed")
+    mode = data.get("mode", data.get("type", next(iter(types)) if len(types) == 1 else "mixed"))
     if not isinstance(mode, str) or mode not in LABELS or (mode != "mixed" and types != {mode}):
         raise ValueError("mode phải khớp type của tất cả item hoặc là mixed.")
     ids = [row["id"] for row in rows if "id" in row]
     if len(ids) != len(set(ids)):
         raise ValueError("items có id trùng.")
-    for row in rows:
+    for i, row in enumerate(rows, 1):
+        if row["type"] == "guess_word":
+            if row.get("thinking_seconds", settings.get("thinking_seconds", 5)) <= 0:
+                raise ValueError(f"Câu {i}: thinking_seconds phải lớn hơn 0.")
+            if re.search(r"(?i)(?<![a-z])" + re.escape(row["answer"]) + r"(?![a-z])", str(data.get("title", ""))):
+                raise ValueError(f"Câu {i}: tiêu đề không được chứa đáp án tiếng Anh.")
+            row["_default_thinking_seconds"] = 5
         if "thinking_seconds" not in row and "thinking_seconds" in settings:
             row["_default_thinking_seconds"] = settings["thinking_seconds"]
     return str(data.get("title", "MỘT CHÚT ENGLISH")), rows, mode
@@ -183,3 +202,38 @@ def export_document(title, rows, mode):
         return dict(title=title, questions=[{k: v for k, v in row.items() if k != "type"} for row in items])
     settings = next((dict(thinking_seconds=row["_default_thinking_seconds"]) for row in rows if "_default_thinking_seconds" in row), {})
     return dict(schema_version=2, title=title, mode=mode, settings=settings, items=items)
+
+
+def masked_word(answer):
+    word = answer.strip().upper()
+    return " ".join([word[0]] + ["_"] * (len(word)-1))
+
+
+def document_warnings(title, rows):
+    warnings = []
+    words = [r["answer"].lower() for r in rows if r.get("type") == "guess_word"]
+    if len(words) != len(set(words)):
+        warnings.append("Có từ tiếng Anh trùng trong video.")
+    count = re.search(r"(\d+)\s*(?:câu|từ)\b", title, re.I)
+    if count and int(count[1]) != len(rows):
+        warnings.append(f"Tiêu đề ghi {count[1]} câu/từ nhưng dữ liệu có {len(rows)} câu.")
+    return warnings
+
+
+def guess_word_sample():
+    words = [
+        ("activity", "Hoạt động", "noun", "Swimming is my favorite activity.", "Bơi lội là hoạt động yêu thích của tôi."),
+        ("book", "Cuốn sách", "noun", "I read a book every week.", "Tôi đọc một cuốn sách mỗi tuần."),
+        ("beautiful", "Đẹp", "adjective", "The garden is beautiful.", "Khu vườn thật đẹp."),
+        ("kitchen", "Nhà bếp", "noun", "She is in the kitchen.", "Cô ấy đang ở trong nhà bếp."),
+        ("weather", "Thời tiết", "noun", "The weather is nice today.", "Thời tiết hôm nay đẹp."),
+        ("travel", "Đi du lịch", "verb", "I travel by train.", "Tôi đi du lịch bằng tàu hỏa."),
+        ("healthy", "Khỏe mạnh", "adjective", "Walking keeps us healthy.", "Đi bộ giúp chúng ta khỏe mạnh."),
+        ("neighbor", "Người hàng xóm", "noun", "My neighbor is friendly.", "Người hàng xóm của tôi rất thân thiện."),
+        ("borrow", "Mượn", "verb", "Can I borrow your pen?", "Tôi có thể mượn bút của bạn không?"),
+        ("invite", "Mời", "verb", "I want to invite you to dinner.", "Tôi muốn mời bạn ăn tối."),
+    ]
+    return dict(schema_version=2, title="10 CÂU TIẾNG ANH: ĐOÁN TỪ", mode="guess_word", settings=dict(thinking_seconds=5), items=[
+        dict(id=f"guess-word-{i:02d}", type="guess_word", subject="TỪ VỰNG HẰNG NGÀY", level="A2", meaning_vi=meaning, answer=word,
+             part_of_speech=pos, explanation=f"{en(word.capitalize())} có nghĩa là {meaning.lower()}.", example=en(example), example_translation=translation)
+        for i, (word, meaning, pos, example, translation) in enumerate(words, 1)])

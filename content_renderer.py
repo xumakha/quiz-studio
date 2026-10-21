@@ -78,11 +78,29 @@ def render_scene(row, scene, number, total, title, settings):
     draw.rounded_rectangle((787, 178, 1080-margin, 238), radius=13, fill=(255, 255, 255, 220))
     draw.text((893, 208), f"{number:02d} / {total:02d}", font=font(31, True), anchor="mm", fill="#42637f")
     block(title, 260, 130, 52, color="#665125", background="#ffdf7d", field="tiêu đề")
-    heading = scene.label
+    heading = "" if kind == "guess_word" else scene.label
     heading_height = min(260, max(90, len(wrap(draw, heading, font(32, True), 864))*44+32))
     block(heading, 418, heading_height, 32, color="#58758c", field="hướng dẫn")
     content_top = max(530, 418 + heading_height + 22)
-    if kind == "dialogue":
+    if kind == "guess_word":
+        block(row.get("level", ""), 410, 100, 32, color="#58758c")
+        block(row["meaning_vi"], 535, 190, 76, field="nghĩa tiếng Việt")
+        # Fit the complete mask on one line, including twenty-letter words.
+        word = plain(scene.text)
+        size = 76
+        while size > 30 and draw.textlength(word, font=font(size, True)) > 864:
+            size -= 1
+        if scene.phase in ("question", "countdown", "answer", "explanation"):
+            block(word, 750, 140, size, color="#1267b1", background="#f8fcff", field="từ cần đoán")
+        else:
+            block(word, 750, 210, 52, field="ví dụ")
+        hint = " · ".join(filter(None, [row.get("part_of_speech", ""), row.get("context_hint", "")]))
+        block(hint, 920, 90, 32, color="#58758c", field="gợi ý")
+        if scene.phase == "question":
+            block("Chuẩn bị", 1160, 110, 48)
+        elif scene.phase in ("answer", "explanation", "example"):
+            block(scene.detail, 1040, 300, 42, background="#fff8df", field="giải thích / ví dụ", bold=False)
+    elif kind == "dialogue":
         turns = scene.text.split("\n")
         height = min(180, min(640, 1130-content_top) // max(1, len(turns)) - 10)
         for i, turn in enumerate(turns):
@@ -111,9 +129,9 @@ def render_scene(row, scene, number, total, title, settings):
             start = plain(row["question"]).index("___")
             highlight = (start, start+len(plain(row["answer"])))
         block(scene.text, content_top, 950-content_top, 68, highlight=highlight, field="câu hỏi/đáp án")
-    if scene.detail:
+    if scene.detail and kind != "guess_word":
         block(scene.detail, 990, 180, 54 if kind == "error_correction" else 44, color="#1267b1", background="#f8fcff", field="phần bật mí")
-    if scene.phase == "answer" and row.get("explanation"):
+    if kind != "guess_word" and scene.phase == "answer" and row.get("explanation"):
         block(row["explanation"], 1190, 210, 40, background="#fff8df", field="giải thích", bold=False)
     if scene.countdown is not None:
         block(f"{scene.countdown} giây", 1160, 160, 64, background="#ffdf7d")

@@ -136,6 +136,10 @@ class App(tk.Tk):
             _, _, mode = normalize(json.loads(self.text.get("1.0", "end")), parse_legacy_questions)
             self.content_editor.detect(mode)
             self.validation.configure(text=f"JSON hợp lệ: {len(self.rows)} câu hỏi.", foreground="#218c7c")
+            from content_types import document_warnings
+            warnings = document_warnings(self.quiz_title, self.rows)
+            if warnings:
+                self.validation.configure(text="Cảnh báo: " + " · ".join(warnings), foreground="#a46716")
             self.question_count.configure(text=f"{len(self.rows)} câu hỏi")
             self.question_list.delete(*self.question_list.get_children())
             for index, row in enumerate(self.rows):
@@ -195,6 +199,7 @@ class App(tk.Tk):
             Path(path).write_text(json.dumps(document, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def stop_preview(self):
+        self.seek_preview = lambda value: None
         if getattr(self, "preview_cancel", None):
             self.preview_cancel.set()
         if sys.platform == "win32":
@@ -256,7 +261,9 @@ class App(tk.Tk):
         import time
         started = None
         elapsed = 0
-        def advance(position=0):
+        self.preview_seek.configure(to=sum(p.seconds for _, p in scenes))
+        self.preview_seek.set(0)
+        def advance(position=0, offset=0, audio_source=None):
             nonlocal started, elapsed
             if position >= len(scenes):
                 self.stop_preview()
@@ -268,15 +275,42 @@ class App(tk.Tk):
                 self.preview_image = ImageTk.PhotoImage(picture)
                 self.preview.configure(image=self.preview_image)
                 self.selected.set(index+1)
+                self.preview_seek.set(elapsed)
                 if started is None:
                     if audio:
                         import winsound
-                        winsound.PlaySound(str(audio), winsound.SND_FILENAME | winsound.SND_ASYNC)
+                        winsound.PlaySound(str(audio_source or audio), winsound.SND_FILENAME | winsound.SND_ASYNC)
                     started = time.monotonic()
-                elapsed += prepared.seconds
+                    started -= elapsed
+                elapsed += prepared.seconds - offset
                 self.playback_timer = self.after(max(1, round((started+elapsed-time.monotonic())*1000)), lambda: advance(position+1))
             except Exception as error:
                 self.validation.configure(text=str(error), foreground="#ba4247")
+        def seek(timestamp):
+            nonlocal started, elapsed
+            import wave
+            timer = getattr(self, "playback_timer", None)
+            if timer:
+                self.after_cancel(timer)
+            position, offset = 0, float(timestamp)
+            while position < len(scenes)-1 and offset >= scenes[position][1].seconds:
+                offset -= scenes[position][1].seconds
+                position += 1
+            timestamp = min(float(timestamp), sum(p.seconds for _, p in scenes)-1/30)
+            offset = max(0, timestamp - sum(p.seconds for _, p in scenes[:position]))
+            source = None
+            if audio:
+                import winsound
+                winsound.PlaySound(None, winsound.SND_PURGE)
+                source = directory / "seek-track.wav"
+                with wave.open(str(audio), "rb") as track, wave.open(str(source), "wb") as target:
+                    target.setparams(track.getparams())
+                    track.setpos(min(track.getnframes(), round(timestamp*track.getframerate())))
+                    while block := track.readframes(44100):
+                        target.writeframesraw(block)
+            started, elapsed = None, timestamp
+            advance(position, offset, source)
+        self.seek_preview = seek
         advance()
 
     def choose_media(self, kind):

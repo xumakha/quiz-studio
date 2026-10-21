@@ -170,6 +170,9 @@ class ContentTests(unittest.TestCase):
         # One mixed render exercises every renderer, transition and the existing CTA.
         doc = sample_document("mixed")
         doc["settings"]["thinking_seconds"] = 0
+        for item in doc["items"]:
+            if item["type"] == "guess_word":
+                item["thinking_seconds"] = 1
         title, rows, _ = self.parse(doc)
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "mixed.mp4"
