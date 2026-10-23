@@ -1,3 +1,4 @@
+from background_media import open_background
 """Text-first learning layouts sharing exactly the export scene representation."""
 from PIL import Image, ImageDraw, ImageOps
 from content_types import plain, LABELS
@@ -30,8 +31,8 @@ def render_scene(row, scene, number, total, title, settings):
         from video_themes import render_frame
         return render_frame(row, number, total, title, settings, scene.phase == "answer", scene.countdown)
     image = Image.new("RGB", (1080, 1920), "#e6f1f8")
-    if settings.background:
-        with Image.open(settings.background) as source:
+    if settings.background and not settings.background_overlay:
+        with open_background(settings.background) as source:
             image = ImageOps.fit(ImageOps.exif_transpose(source).convert("RGB"), image.size)
         image = Image.blend(image, Image.new("RGB", image.size, "#081022"), settings.background_dim / 100)
     background_image = image

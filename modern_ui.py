@@ -162,14 +162,29 @@ def build_ui(app, saved):
     divider(voice)
     section(voice, "Thời gian câu hỏi")
     slider(voice, "Thời gian suy nghĩ", app.countdown, 1, 30, "s")
-    section(background, "Ảnh nền")
+    section(background, "Ảnh / video nền")
     upload = box(background, BG, border_width=1, border_color=LINE, corner_radius=8)
     upload.pack(fill="x", pady=10)
     ctk.CTkLabel(upload,text="",image=icon("image",MUTED,32),height=40).pack(pady=(16,4))
-    label(upload, "Ảnh nền của bạn", 12, MUTED).pack()
-    button(upload, "Chọn ảnh nền", lambda: app.choose_media("background"),symbol="image").pack(fill="x", padx=16, pady=16)
-    label(background, "Ảnh được tự lưu cho lần mở sau.", 10, MUTED).pack(anchor="w", pady=5)
-    slider(background, "Làm tối ảnh nền", app.background_dim, 0, 70, "%")
+    label(upload, "Ảnh hoặc video của bạn", 12, MUTED).pack()
+    button(upload, "Chọn ảnh / video nền", lambda: app.choose_media("background"),symbol="image").pack(fill="x", padx=16, pady=16)
+    label(background, "Nền được tự lưu. Video tự lặp, tắt tiếng gốc và chạy ngay trong khung xem trước.", 10, MUTED, wraplength=220).pack(anchor="w", pady=5)
+    section(background, "Thư viện nền đã tải lên")
+    app.background_library_boxes = {}
+    for kind, caption in (("images", "Ảnh nền đã lưu"), ("videos", "Video nền đã lưu")):
+        label(background, caption, 11, MUTED).pack(anchor="w", pady=(8, 4))
+        picker = ttk.Combobox(background, state="readonly", width=24)
+        picker.pack(fill="x")
+        app.background_library_boxes[kind] = picker
+        button(background, "Dùng ảnh này" if kind == "images" else "Dùng video này",
+               lambda selected_kind=kind: app.choose_saved_background(selected_kind)).pack(fill="x", pady=5)
+        button(background, "Mở thư mục ảnh" if kind == "images" else "Mở thư mục video",
+               lambda selected_kind=kind: app.open_background_library_folder(selected_kind), symbol="folder").pack(fill="x", pady=(0, 5))
+    button(background, "Làm mới thư viện", app.refresh_background_library).pack(fill="x", pady=5)
+    label(background, "Bỏ nền chỉ bỏ lựa chọn hiện tại; các nền đã tải lên vẫn được giữ trong thư viện.",
+          10, MUTED, wraplength=220).pack(anchor="w", pady=5)
+    app.refresh_background_library()
+    slider(background, "Làm tối nền", app.background_dim, 0, 70, "%")
     divider(background)
     section(background, "Nhạc nền")
     button(background, "Chọn nhạc nền", lambda: app.choose_media("music"),symbol="music").pack(fill="x", pady=10)
@@ -178,7 +193,7 @@ def build_ui(app, saved):
     app.media_label = ttk.Label(background, wraplength=220, foreground=MUTED)
     app.media_label.pack(anchor="w", pady=12)
     app.update_media_label()
-    button(background, "Bỏ ảnh / nhạc nền", app.clear_media,symbol="x").pack(fill="x", pady=10)
+    button(background, "Bỏ nền / nhạc nền", app.clear_media,symbol="x").pack(fill="x", pady=10)
     section(video, "Thông tin video")
     combo(video, "Giao diện cho toàn bộ video", app.video_template, list(TEMPLATES))
     label(video, "Mỗi video chỉ dùng một giao diện.\nTự động chọn theo môn của câu đầu tiên; bạn có thể đổi mẫu tại đây.", 10, MUTED, wraplength=220).pack(anchor="w", pady=8)

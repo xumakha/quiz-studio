@@ -1,0 +1,130 @@
+{
+  "schema_version": 2,
+  "title": "10 CÂU TIẾNG ANH: ĐOÁN TỪ",
+  "mode": "guess_word",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "guess-word-01",
+      "type": "guess_word",
+      "subject": "TỪ VỰNG HẰNG NGÀY",
+      "level": "A2",
+      "meaning_vi": "Hoạt động",
+      "answer": "activity",
+      "part_of_speech": "noun",
+      "explanation": "[en]Activity[/en] có nghĩa là hoạt động.",
+      "example": "[en]Swimming is my favorite activity.[/en]",
+      "example_translation": "Bơi lội là hoạt động yêu thích của tôi."
+    },
+    {
+      "id": "guess-word-02",
+      "type": "guess_word",
+      "subject": "TỪ VỰNG HẰNG NGÀY",
+      "level": "A2",
+      "meaning_vi": "Cuốn sách",
+      "answer": "book",
+      "part_of_speech": "noun",
+      "explanation": "[en]Book[/en] có nghĩa là cuốn sách.",
+      "example": "[en]I read a book every week.[/en]",
+      "example_translation": "Tôi đọc một cuốn sách mỗi tuần."
+    },
+    {
+      "id": "guess-word-03",
+      "type": "guess_word",
+      "subject": "TỪ VỰNG HẰNG NGÀY",
+      "level": "A2",
+      "meaning_vi": "Đẹp",
+      "answer": "beautiful",
+      "part_of_speech": "adjective",
+      "explanation": "[en]Beautiful[/en] có nghĩa là đẹp.",
+      "example": "[en]The garden is beautiful.[/en]",
+      "example_translation": "Khu vườn thật đẹp."
+    },
+    {
+      "id": "guess-word-04",
+      "type": "guess_word",
+      "subject": "TỪ VỰNG HẰNG NGÀY",
+      "level": "A2",
+      "meaning_vi": "Nhà bếp",
+      "answer": "kitchen",
+      "part_of_speech": "noun",
+      "explanation": "[en]Kitchen[/en] có nghĩa là nhà bếp.",
+      "example": "[en]She is in the kitchen.[/en]",
+      "example_translation": "Cô ấy đang ở trong nhà bếp."
+    },
+    {
+      "id": "guess-word-05",
+      "type": "guess_word",
+      "subject": "TỪ VỰNG HẰNG NGÀY",
+      "level": "A2",
+      "meaning_vi": "Thời tiết",
+      "answer": "weather",
+      "part_of_speech": "noun",
+      "explanation": "[en]Weather[/en] có nghĩa là thời tiết.",
+      "example": "[en]The weather is nice today.[/en]",
+      "example_translation": "Thời tiết hôm nay đẹp."
+    },
+    {
+      "id": "guess-word-06",
+      "type": "guess_word",
+      "subject": "TỪ VỰNG HẰNG NGÀY",
+      "level": "A2",
+      "meaning_vi": "Đi du lịch",
+      "answer": "travel",
+      "part_of_speech": "verb",
+      "explanation": "[en]Travel[/en] có nghĩa là đi du lịch.",
+      "example": "[en]I travel by train.[/en]",
+      "example_translation": "Tôi đi du lịch bằng tàu hỏa."
+    },
+    {
+      "id": "guess-word-07",
+      "type": "guess_word",
+      "subject": "TỪ VỰNG HẰNG NGÀY",
+      "level": "A2",
+      "meaning_vi": "Khỏe mạnh",
+      "answer": "healthy",
+      "part_of_speech": "adjective",
+      "explanation": "[en]Healthy[/en] có nghĩa là khỏe mạnh.",
+      "example": "[en]Walking keeps us healthy.[/en]",
+      "example_translation": "Đi bộ giúp chúng ta khỏe mạnh."
+    },
+    {
+      "id": "guess-word-08",
+      "type": "guess_word",
+      "subject": "TỪ VỰNG HẰNG NGÀY",
+      "level": "A2",
+      "meaning_vi": "Người hàng xóm",
+      "answer": "neighbor",
+      "part_of_speech": "noun",
+      "explanation": "[en]Neighbor[/en] có nghĩa là người hàng xóm.",
+      "example": "[en]My neighbor is friendly.[/en]",
+      "example_translation": "Người hàng xóm của tôi rất thân thiện."
+    },
+    {
+      "id": "guess-word-09",
+      "type": "guess_word",
+      "subject": "TỪ VỰNG HẰNG NGÀY",
+      "level": "A2",
+      "meaning_vi": "Mượn",
+      "answer": "borrow",
+      "part_of_speech": "verb",
+      "explanation": "[en]Borrow[/en] có nghĩa là mượn.",
+      "example": "[en]Can I borrow your pen?[/en]",
+      "example_translation": "Tôi có thể mượn bút của bạn không?"
+    },
+    {
+      "id": "guess-word-10",
+      "type": "guess_word",
+      "subject": "TỪ VỰNG HẰNG NGÀY",
+      "level": "A2",
+      "meaning_vi": "Mời",
+      "answer": "invite",
+      "part_of_speech": "verb",
+      "explanation": "[en]Invite[/en] có nghĩa là mời.",
+      "example": "[en]I want to invite you to dinner.[/en]",
+      "example_translation": "Tôi muốn mời bạn ăn tối."
+    }
+  ]
+}

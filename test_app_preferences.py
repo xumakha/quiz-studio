@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 import wave
+import time
 from pathlib import Path
 from unittest.mock import patch
 from PIL import Image
@@ -9,6 +10,54 @@ from preferences import USER_DEFAULTS, UserSettingsStore
 
 
 class AppBackgroundTests(unittest.TestCase):
+    def test_video_preview_animates_and_stops_when_background_changes(self):
+        from engine import Renderer, Settings
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "video.mp4"
+            Renderer(Settings()).run([
+                "-f", "lavfi", "-i", "testsrc2=size=180x320:rate=30:duration=0.7",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", source])
+            app = App(data_dir=root / "data")
+            app.withdraw()
+            def pump(seconds):
+                deadline = time.monotonic() + seconds
+                while time.monotonic() < deadline:
+                    app.update()
+                    time.sleep(0.02)
+            try:
+                pump(0.1)
+                app.background = str(source)
+                self.assertTrue(app.show_preview())
+                reader = app.background_preview_reader
+                pump(0.8)
+                first = reader.image.tobytes()
+                pump(0.3)
+                self.assertNotEqual(first, reader.image.tobytes())
+                app.speech.set(False)
+                app.countdown.set(1)
+                app.play_preview()
+                deadline = time.monotonic() + 15
+                while time.monotonic() < deadline and not getattr(app, "preview_directory", None):
+                    pump(0.1)
+                self.assertIsNotNone(app.preview_directory)
+                live = app.background_preview_reader
+                pump(0.4)
+                self.assertIsNotNone(live.image)
+                app.seek_preview(0.5)
+                self.assertIsNot(live, app.background_preview_reader)
+                live.thread.join(timeout=3)
+                self.assertFalse(live.thread.is_alive())
+                pump(0.4)
+                current = app.background_preview_reader
+                app.background = ""
+                self.assertTrue(app.show_preview())
+                current.thread.join(timeout=3)
+                self.assertFalse(current.thread.is_alive())
+                self.assertIsNone(app.background_preview_reader)
+            finally:
+                app.close()
+
     def test_selection_survives_close_and_reopen(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -31,6 +80,11 @@ class AppBackgroundTests(unittest.TestCase):
                 with patch("app.filedialog.askopenfilename", return_value=str(source)):
                     app.choose_media("background")
                 selected = app.background
+                self.assertEqual(len(app.background_library_entries["images"]), 1)
+                app.clear_media()
+                app.background_library_boxes["images"].current(0)
+                app.choose_saved_background("images")
+                self.assertEqual(app.background, selected)
                 app.background_dim.set(8)
                 for name, value in chosen.items():
                     getattr(app, name).set(value)

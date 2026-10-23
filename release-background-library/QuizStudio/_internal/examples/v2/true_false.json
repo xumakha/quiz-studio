@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "title": "MỘT CHÚT ENGLISH",
+  "mode": "true_false",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "true_false-01",
+      "type": "true_false",
+      "subject": "ĐÚNG / SAI",
+      "statement": "[en]She are a student.[/en]",
+      "answer": false,
+      "correction": "[en]She is a student.[/en]",
+      "explanation": "She dùng is."
+    }
+  ]
+}

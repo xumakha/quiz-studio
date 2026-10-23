@@ -1,5 +1,9 @@
 @echo off
 cd /d "%~dp0"
+if exist "release-background-library\QuizStudio\QuizStudio.exe" (
+  call Mo-QuizStudio.bat
+  exit /b
+)
 if exist "release-latest\QuizStudio\QuizStudio.exe" (
   call Mo-QuizStudio.bat
   exit /b

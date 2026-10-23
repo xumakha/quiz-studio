@@ -1,0 +1,950 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "title": {
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "multiple_choice",
+        "error_correction",
+        "fill_blank",
+        "word_order",
+        "translation",
+        "listening",
+        "dialogue",
+        "true_false",
+        "multiple_meanings",
+        "sentence_upgrade",
+        "phrase_lesson",
+        "mixed"
+      ]
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "thinking_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        }
+      },
+      "required": []
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/multiple_choice"
+          },
+          {
+            "$ref": "#/$defs/error_correction"
+          },
+          {
+            "$ref": "#/$defs/fill_blank"
+          },
+          {
+            "$ref": "#/$defs/word_order"
+          },
+          {
+            "$ref": "#/$defs/translation"
+          },
+          {
+            "$ref": "#/$defs/listening"
+          },
+          {
+            "$ref": "#/$defs/dialogue"
+          },
+          {
+            "$ref": "#/$defs/true_false"
+          },
+          {
+            "$ref": "#/$defs/multiple_meanings"
+          },
+          {
+            "$ref": "#/$defs/sentence_upgrade"
+          },
+          {
+            "$ref": "#/$defs/phrase_lesson"
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "items"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "multiple_choice": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "const": "multiple_choice"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thinking_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "options": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "answer": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "question",
+        "options",
+        "answer"
+      ]
+    },
+    "error_correction": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "const": "error_correction"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thinking_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "answer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "highlight": {
+          "type": "object",
+          "properties": {
+            "wrong": {
+              "type": "string",
+              "minLength": 1
+            },
+            "correct": {
+              "type": "string",
+              "minLength": 1
+            },
+            "occurrence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "start": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "wrong",
+            "correct"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "question",
+        "answer",
+        "explanation",
+        "highlight"
+      ]
+    },
+    "fill_blank": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "const": "fill_blank"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thinking_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "answer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "completed_sentence": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "type",
+        "question",
+        "answer",
+        "explanation"
+      ]
+    },
+    "word_order": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "const": "word_order"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thinking_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tokens": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "text"
+            ]
+          }
+        },
+        "answer_order": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "type",
+        "explanation",
+        "tokens",
+        "answer_order"
+      ]
+    },
+    "translation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "const": "translation"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thinking_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_language": {
+          "enum": [
+            "vi",
+            "en"
+          ]
+        },
+        "target_language": {
+          "enum": [
+            "vi",
+            "en"
+          ]
+        },
+        "suggested_answers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "show_alternatives": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type",
+        "source_text",
+        "source_language",
+        "target_language",
+        "explanation",
+        "suggested_answers"
+      ]
+    },
+    "listening": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "const": "listening"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thinking_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "audio_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "transcript": {
+          "type": "string",
+          "minLength": 1
+        },
+        "translation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replay_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      },
+      "required": [
+        "type",
+        "audio_text",
+        "transcript",
+        "translation",
+        "explanation"
+      ]
+    },
+    "dialogue": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "const": "dialogue"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thinking_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dialogue": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "properties": {
+              "speaker": {
+                "type": "string",
+                "minLength": 1
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "speaker",
+              "text"
+            ]
+          }
+        },
+        "missing_turn_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "suggested_answers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "type",
+        "explanation",
+        "dialogue",
+        "missing_turn_index",
+        "suggested_answers"
+      ]
+    },
+    "true_false": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "const": "true_false"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thinking_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "answer": {
+          "type": "boolean"
+        },
+        "correction": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "type",
+        "statement",
+        "explanation",
+        "answer"
+      ]
+    },
+    "multiple_meanings": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "const": "multiple_meanings"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thinking_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "word": {
+          "type": "string",
+          "minLength": 1
+        },
+        "senses": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "phrase": {
+                "type": "string",
+                "minLength": 1
+              },
+              "meaning": {
+                "type": "string",
+                "minLength": 1
+              },
+              "example": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "phrase",
+              "meaning",
+              "example"
+            ]
+          }
+        }
+      },
+      "required": [
+        "type",
+        "word",
+        "senses"
+      ]
+    },
+    "sentence_upgrade": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "const": "sentence_upgrade"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thinking_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "original": {
+          "type": "string",
+          "minLength": 1
+        },
+        "alternative": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nuance": {
+          "type": "string",
+          "minLength": 1
+        },
+        "example_context": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "type",
+        "original",
+        "alternative",
+        "nuance"
+      ]
+    },
+    "phrase_lesson": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "const": "phrase_lesson"
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thinking_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "phrase": {
+          "type": "string",
+          "minLength": 1
+        },
+        "meaning": {
+          "type": "string",
+          "minLength": 1
+        },
+        "example": {
+          "type": "string",
+          "minLength": 1
+        },
+        "example_translation": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "type",
+        "phrase",
+        "meaning",
+        "example"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "multiple_choice"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/multiple_choice"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "error_correction"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/error_correction"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "fill_blank"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/fill_blank"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "word_order"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/word_order"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "translation"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/translation"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "listening"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/listening"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "dialogue"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/dialogue"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "true_false"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/true_false"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "multiple_meanings"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/multiple_meanings"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "sentence_upgrade"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/sentence_upgrade"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "phrase_lesson"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/phrase_lesson"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

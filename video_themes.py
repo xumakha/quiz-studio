@@ -1,3 +1,4 @@
+from background_media import open_background
 """Subject detection and soft learning-video templates."""
 import math
 import re
@@ -34,8 +35,8 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     is_math = theme=="math"
     ink, muted = ("#29443a", "#658477") if is_math else ("#2d4559", "#6b8297")
     image = Image.new("RGB", (1080,1920), "#e3f1e9" if is_math else "#e6f1f8")
-    if settings.background:
-        with Image.open(settings.background) as source:
+    if settings.background and not settings.background_overlay:
+        with open_background(settings.background) as source:
             image = ImageOps.fit(ImageOps.exif_transpose(source).convert("RGB"), image.size, method=Image.Resampling.LANCZOS)
         shade = Image.new("RGBA", image.size, (8,15,34,round(255*settings.background_dim/100)))
         image = Image.alpha_composite(image.convert("RGBA"),shade).convert("RGB")

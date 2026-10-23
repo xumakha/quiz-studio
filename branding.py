@@ -10,6 +10,11 @@ CONTENT_MARGIN_X = 80
 
 def compose_content(background, content, settings):
     """Keep the background fixed while moving all video elements below mobile UI."""
+    if settings.background_overlay:
+        background = Image.new("RGBA", background.size,
+                               (8, 15, 34, round(255 * settings.background_dim / 100)))
+        background.alpha_composite(content, (0, CONTENT_OFFSET_Y))
+        return background.resize((settings.width, settings.height), Image.Resampling.LANCZOS)
     background = background.convert("RGBA")
     background.alpha_composite(content, (0, CONTENT_OFFSET_Y))
     return background.convert("RGB").resize(

@@ -96,6 +96,7 @@ class Settings:
     template: str = "auto"
     background: str = ""
     background_dim: int = 12
+    background_overlay: bool = False
     music: str = ""
     music_volume: float = 0.12
 
@@ -266,21 +267,32 @@ class Renderer:
         h, m, s = map(float, match.groups())
         return h * 3600 + m * 60 + s
 
-    def segment(self, image, output, seconds, audio=None):
+    def segment(self, image, output, seconds, audio=None, background_offset=None):
         # Match PCM samples to the exact video-frame duration. Encoding AAC for
         # every segment adds encoder priming/padding at each countdown join.
         frames = math.ceil(seconds * 30)
         samples = frames * 1470  # 44100 Hz / 30 fps
         args = ["-loop", "1", "-framerate", "30", "-i", image]
         args += ["-i", audio] if audio else ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo"]
-        self.run([*args, "-t", f"{frames / 30:.9f}", "-vf", "format=yuv420p", "-af",
+        video_map = "0:v:0"
+        filters = ["-vf", "format=yuv420p"]
+        if background_offset is not None:
+            args += ["-stream_loop", "-1", "-ss", f"{background_offset:.9f}", "-i", self.settings.background]
+            filters = ["-filter_complex",
+                       f"[2:v]setpts=PTS-STARTPTS,scale={self.settings.width}:{self.settings.height}:"
+                       f"force_original_aspect_ratio=increase,crop={self.settings.width}:{self.settings.height},"
+                       "setsar=1,fps=30[bg];[bg][0:v]overlay=shortest=1,format=yuv420p[v]"]
+            video_map = "[v]"
+        self.run([*args, "-t", f"{frames / 30:.9f}", *filters, "-af",
                   f"aresample=44100,apad,atrim=end_sample={samples},asetpts=N/SR/TB",
                   "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-r", "30",
-                  "-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2", "-map", "0:v:0", "-map", "1:a:0", output])
+                  "-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2", "-map", video_map, "-map", "1:a:0", output])
 
     def render(self, title, rows, output):
         from video_themes import video_template
         settings = replace(self.settings, template=video_template(rows, title, self.settings.template))
+        from background_media import is_video
+        settings.background_overlay = bool(settings.background and is_video(settings.background))
         destination = Path(output).resolve()
         destination.parent.mkdir(parents=True, exist_ok=True)
         from content_timeline import plan_item
@@ -317,7 +329,10 @@ class Renderer:
                     else:
                         render_scene(row, scene, number, len(rows), title, settings).save(picture)
                     video = picture.with_suffix(".mov")
-                    self.segment(picture, video, duration, audio)
+                    if settings.background_overlay:
+                        self.segment(picture, video, duration, audio, background_offset=question_frames / 30)
+                    else:
+                        self.segment(picture, video, duration, audio)
                     segments.append(video)
                     question_frames += math.ceil(duration * 30)
                     update(f"{prefix}: {scene.label or scene.phase} ({duration:.1f}s)", increment=1)

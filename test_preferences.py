@@ -44,6 +44,35 @@ class UserSettingsTests(unittest.TestCase):
 
 
 class BackgroundPersistenceTests(unittest.TestCase):
+    def test_library_preserves_uploads_names_and_legacy_backgrounds(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = BackgroundStore(root / "data")
+            legacy = store.directory / "backgrounds" / "old.png"
+            legacy.parent.mkdir(parents=True)
+            Image.new("RGB", (30, 30), "red").save(legacy)
+            store._save({"background": str(legacy), "background_name": "Old photo.png", "background_dim": 12})
+            entries = store.library()
+            self.assertEqual(entries["images"][0]["name"], "Old photo.png")
+            self.assertTrue(store.library_directory("videos").is_dir())
+            self.assertTrue(legacy.exists())
+            original = root / "new.png"
+            Image.new("RGB", (30, 30), "blue").save(original)
+            selected = store.select(original, 20)
+            store.select(original, 20)
+            original.unlink()
+            store.clear(20)
+            reopened = BackgroundStore(store.directory)
+            entries = reopened.library()["images"]
+            self.assertEqual(len(entries), 2)
+            self.assertEqual(reopened.load()["background"], "")
+            restored = reopened.select_saved(selected["background"], 7)
+            self.assertEqual(restored["background_name"], "new.png")
+            self.assertEqual(reopened.load(), restored)
+            self.assertEqual(Path(restored["background"]).parent.name, "images")
+            with self.assertRaises(ValueError):
+                reopened.select_saved(root / "outside.png", 7)
+
     def test_reopen_after_original_is_deleted_and_clear(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -1,0 +1,22 @@
+{
+  "schema_version": 2,
+  "title": "MỘT CHÚT ENGLISH",
+  "mode": "error_correction",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "error_correction-01",
+      "type": "error_correction",
+      "subject": "TÌM LỖI SAI",
+      "question": "[en]She don't like coffee.[/en]",
+      "answer": "[en]She doesn't like coffee.[/en]",
+      "highlight": {
+        "wrong": "don't",
+        "correct": "doesn't"
+      },
+      "explanation": "Chủ ngữ She dùng doesn't."
+    }
+  ]
+}

@@ -161,16 +161,21 @@ class App(tk.Tk):
         if not self.rows:
             return False
         try:
+            self.stop_preview()
             index = max(0, min(self.selected.get() - 1, len(self.rows) - 1))
             self.selected.set(index + 1)
             settings = self.settings()
             theme = video_template(self.rows, self.quiz_title, settings.template)
             settings.template = theme
+            from background_media import is_video
+            settings.background_overlay = bool(settings.background and is_video(settings.background))
             self.template_label.configure(text={"math": "TOÁN · XANH BẠC HÀ", "english": "TIẾNG ANH · XANH SÁNG", "classic": "QUIZ · NHIỀU MÀU"}[theme])
             picture = frame(self.rows[index], index + 1, len(self.rows), self.quiz_title, settings, reveal=self.reveal.get(), countdown=self.countdown.get())
             picture.thumbnail((180, 220))
             self.preview_image = ImageTk.PhotoImage(picture)
             self.preview.configure(image=self.preview_image)
+            if settings.background_overlay:
+                self.start_background_preview(settings, picture)
             return True
         except Exception as error:
             self.validation.configure(text=str(error), foreground="#ba4247")
@@ -198,7 +203,44 @@ class App(tk.Tk):
             document = export_document(self.quiz_title, self.rows, self.content_editor.mode)
             Path(path).write_text(json.dumps(document, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    def stop_background_preview(self):
+        timer = getattr(self, "background_preview_timer", None)
+        if timer:
+            self.after_cancel(timer)
+            self.background_preview_timer = None
+        reader = getattr(self, "background_preview_reader", None)
+        if reader:
+            reader.close()
+            self.background_preview_reader = None
+
+    def start_background_preview(self, settings, overlay, offset=0):
+        from background_media import VideoPreview, open_background
+        from PIL import ImageOps
+        self.stop_background_preview()
+        self.background_preview_overlay = overlay.convert("RGBA")
+        with open_background(settings.background) as source:
+            self.background_preview_still = ImageOps.fit(source.convert("RGB"), overlay.size)
+        reader = VideoPreview(settings.background, overlay.size, offset)
+        self.background_preview_reader = reader
+
+        def refresh():
+            if self.background_preview_reader is not reader:
+                return
+            if reader.error:
+                self.validation.configure(text=reader.error, foreground="#ba4247")
+                self.stop_background_preview()
+                return
+            background = reader.image or self.background_preview_still
+            picture = background.convert("RGBA")
+            picture.alpha_composite(self.background_preview_overlay)
+            self.preview_image = ImageTk.PhotoImage(picture)
+            self.preview.configure(image=self.preview_image)
+            self.background_preview_timer = self.after(33, refresh)
+
+        refresh()
+
     def stop_preview(self):
+        self.stop_background_preview()
         self.seek_preview = lambda value: None
         if getattr(self, "preview_cancel", None):
             self.preview_cancel.set()
@@ -256,6 +298,9 @@ class App(tk.Tk):
             shutil.rmtree(directory, ignore_errors=True)
             return
         self.preview_directory = directory
+        self.stop_background_preview()
+        from background_media import is_video
+        settings.background_overlay = bool(settings.background and is_video(settings.background))
         self.duration_label.configure(text=f"Thời lượng preview theo âm thanh: {sum(p.seconds for _, p in scenes):.1f}s")
         from content_renderer import render_scene, render_ending
         import time
@@ -272,8 +317,15 @@ class App(tk.Tk):
             try:
                 picture = render_ending(settings) if prepared.scene.phase == "ending" else render_scene(rows[index], prepared.scene, index+1, len(rows), title, settings)
                 picture.thumbnail((180, 220))
-                self.preview_image = ImageTk.PhotoImage(picture)
-                self.preview.configure(image=self.preview_image)
+                if settings.background_overlay and prepared.scene.phase != "ending":
+                    if getattr(self, "background_preview_reader", None) is None:
+                        self.start_background_preview(settings, picture, elapsed)
+                    else:
+                        self.background_preview_overlay = picture.convert("RGBA")
+                else:
+                    self.stop_background_preview()
+                    self.preview_image = ImageTk.PhotoImage(picture)
+                    self.preview.configure(image=self.preview_image)
                 self.selected.set(index+1)
                 self.preview_seek.set(elapsed)
                 if started is None:
@@ -285,9 +337,11 @@ class App(tk.Tk):
                 elapsed += prepared.seconds - offset
                 self.playback_timer = self.after(max(1, round((started+elapsed-time.monotonic())*1000)), lambda: advance(position+1))
             except Exception as error:
+                self.stop_preview()
                 self.validation.configure(text=str(error), foreground="#ba4247")
         def seek(timestamp):
             nonlocal started, elapsed
+            self.stop_background_preview()
             import wave
             timer = getattr(self, "playback_timer", None)
             if timer:
@@ -314,7 +368,7 @@ class App(tk.Tk):
         advance()
 
     def choose_media(self, kind):
-        types = [("Ảnh", "*.png *.jpg *.jpeg *.webp")] if kind == "background" else [("Âm thanh", "*.mp3 *.wav *.m4a *.aac")]
+        types = [("Ảnh hoặc video", "*.png *.jpg *.jpeg *.webp *.mp4 *.mov *.mkv *.webm *.avi *.m4v")] if kind == "background" else [("Âm thanh", "*.mp3 *.wav *.m4a *.aac")]
         path = filedialog.askopenfilename(filetypes=types)
         if path:
             try:
@@ -322,20 +376,60 @@ class App(tk.Tk):
                     saved = self.background_store.select(path, self.background_dim.get())
                     self.background = saved["background"]
                     self.background_name = saved["background_name"]
-                    self.status.configure(text="Đã lưu ảnh nền. Lần mở app tiếp theo sẽ tự sử dụng ảnh này.")
+                    self.status.configure(text="Đã lưu nền vào thư viện để chọn lại trong những lần sau.")
+                    self.refresh_background_library()
                 else:
                     Renderer(Settings()).run(["-i", path, "-t", "0.1", "-map", "0:a:0", "-f", "null", "-"])
                     saved = self.user_store.select_music(path, self.user_settings())
                     self.music, self.music_name = saved["music"], saved["music_name"]
                     self.status.configure(text="Đã lưu nhạc nền. Lần mở app tiếp theo sẽ tự sử dụng nhạc này.")
             except Exception as error:
-                messagebox.showerror("Không lưu được ảnh nền" if kind == "background" else "Không lưu được nhạc nền", str(error))
+                messagebox.showerror("Không lưu được nền" if kind == "background" else "Không lưu được nhạc nền", str(error))
                 return
             self.update_media_label()
             self.show_preview()
 
+    def refresh_background_library(self):
+        try:
+            self.background_library_entries = self.background_store.library()
+            for kind, picker in self.background_library_boxes.items():
+                entries = self.background_library_entries[kind]
+                picker.configure(values=[f"{index + 1}. {entry['name']}" for index, entry in enumerate(entries)])
+                if entries:
+                    selected = next((index for index, entry in enumerate(entries)
+                                     if entry["path"] == self.background), 0)
+                    picker.current(selected)
+                else:
+                    picker.set("Chưa có nền đã lưu")
+        except (OSError, ValueError) as error:
+            self.background_library_entries = {"images": [], "videos": []}
+            messagebox.showerror("Không đọc được thư viện nền", str(error))
+
+    def choose_saved_background(self, kind):
+        entries = self.background_library_entries.get(kind, [])
+        index = self.background_library_boxes[kind].current()
+        if not 0 <= index < len(entries):
+            return
+        try:
+            saved = self.background_store.select_saved(entries[index]["path"], self.background_dim.get())
+            self.background, self.background_name = saved["background"], saved["background_name"]
+            self.update_media_label()
+            self.show_preview()
+            self.status.configure(text=f"Đã chọn nền từ thư viện: {self.background_name}")
+        except (OSError, ValueError) as error:
+            messagebox.showerror("Không chọn được nền", str(error))
+            self.refresh_background_library()
+
+    def open_background_library_folder(self, kind):
+        try:
+            directory = self.background_store.library_directory(kind)
+            directory.mkdir(parents=True, exist_ok=True)
+            os.startfile(str(directory.resolve()))
+        except OSError as error:
+            messagebox.showerror("Không mở được thư mục nền", str(error))
+
     def update_media_label(self):
-        self.media_label.configure(text=f"Ảnh: {self.background_name or 'Chưa chọn'}\nNhạc: {self.music_name or 'Chưa chọn'}")
+        self.media_label.configure(text=f"Nền: {self.background_name or 'Chưa chọn'}\nNhạc: {self.music_name or 'Chưa chọn'}")
 
     def background_dim_changed(self, *args):
         self.show_preview()

@@ -1,3 +1,4 @@
+from background_media import open_background
 """Colorful quiz board inspired by the supplied mobile-video reference."""
 import math
 import re
@@ -9,8 +10,8 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     from engine import draw_option_text, fitted, font, plain
     ink, blue = "#28323d", "#147af4"
     image = Image.new("RGB", (1080, 1920), "#319fe9")
-    if settings.background:
-        with Image.open(settings.background) as source:
+    if settings.background and not settings.background_overlay:
+        with open_background(settings.background) as source:
             image = ImageOps.fit(ImageOps.exif_transpose(source).convert("RGB"), image.size, method=Image.Resampling.LANCZOS)
         shade = Image.new("RGBA", image.size, (8, 15, 34, round(255 * settings.background_dim / 100)))
         image = Image.alpha_composite(image.convert("RGBA"), shade).convert("RGB")

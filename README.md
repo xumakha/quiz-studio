@@ -6,9 +6,11 @@ Nhấp đúp **Mo-QuizStudio.bat** để mở bản mới nhất tại `release-
 
 ## Tạo video
 
+Trong tab **Nền → Thư viện nền đã tải lên**, chọn ảnh hoặc video đã lưu rồi bấm **Dùng ảnh này** / **Dùng video này**. Hai thư mục riêng nằm tại `%LOCALAPPDATA%\QuizStudio\backgrounds\images` và `%LOCALAPPDATA%\QuizStudio\backgrounds\videos`; có nút mở từng thư mục ngay trong ứng dụng. Bấm **Làm mới thư viện** sau khi thêm file trực tiếp vào thư mục. Bỏ nền hiện tại không xóa các file trong thư viện. Các nền từ phiên bản cũ cũng được đưa vào thư viện; file cũ không còn thông tin tên gốc sẽ hiển thị tên file đã lưu.
+
 1. Mở JSON trong app; có mẫu tại `examples/questions.json` và nội dung tiếng Anh tại `examples/tieng-anh-co-ban-6-phut.json`.
 2. Chỉnh giọng Việt/Anh, tốc độ, cao độ và thời gian suy nghĩ trong tab Giọng đọc. Đoạn `[en]...[/en]` dùng giọng tiếng Anh riêng.
-3. Trong tab Nền, chọn ảnh/nhạc và chỉnh mức làm tối, âm lượng. Ảnh và nhạc nền được sao chép vào `%LOCALAPPDATA%\QuizStudio` để lần sau tự nạp lại, kể cả khi file gốc bị di chuyển hoặc xóa. Bỏ ảnh / nhạc nền cũng xóa cả hai lựa chọn đã lưu.
+3. Trong tab Nền, chọn ảnh hoặc video nền (MP4, MOV, MKV, WebM, AVI, M4V), chọn nhạc và chỉnh mức làm tối, âm lượng. Video nền tự lặp, chạy liên tục qua các câu hỏi, được cắt giữa để phủ kín khung hình và tắt âm thanh gốc. Video chạy ngay trong khung xem trước và khi phát thử nội dung; đoạn kết vẫn dùng ảnh kết thúc riêng. Ảnh/video và nhạc nền được sao chép vào `%LOCALAPPDATA%\QuizStudio` để lần sau tự nạp lại, kể cả khi file gốc bị di chuyển hoặc xóa. Bỏ nền / nhạc nền xóa cả hai lựa chọn đã lưu.
 4. Trong tab Video, dùng lựa chọn Giao diện cho toàn bộ video để chuyển giữa Toán, Tiếng Anh, Quiz nhiều màu hoặc tự động theo môn học của câu đầu tiên. Mỗi video chỉ dùng một giao diện cho tất cả câu hỏi, đếm ngược và đáp án; xem trước cũng dùng giao diện đó. Bật/tắt watermark và sửa chữ; chọn độ phân giải.
 5. Kiểm tra & xem trước, chọn câu và bật hiện đáp án để xem bố cục. Danh sách câu hỏi cho phép chọn nhanh.
 6. Xuất video MP4, theo dõi phần trăm và bước xử lý. Khi hoàn tất, Mở trong thư mục chọn sẵn file video. Nút Hủy dừng tác vụ mà không ghi đè file đích chưa hoàn tất.

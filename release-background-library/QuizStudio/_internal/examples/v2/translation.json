@@ -1,0 +1,23 @@
+{
+  "schema_version": 2,
+  "title": "MỘT CHÚT ENGLISH",
+  "mode": "translation",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "translation-01",
+      "type": "translation",
+      "subject": "DỊCH NHANH",
+      "source_text": "Tôi thích đọc sách.",
+      "source_language": "vi",
+      "target_language": "en",
+      "suggested_answers": [
+        "[en]I like reading books.[/en]"
+      ],
+      "explanation": "Có thể dùng like reading hoặc like to read.",
+      "show_alternatives": false
+    }
+  ]
+}
