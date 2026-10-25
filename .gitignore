@@ -20,3 +20,6 @@ release-ending-fade/
 *.spec
 !QuizStudio.spec
 outputs/
+
+.venv-macos/
+release-macos/

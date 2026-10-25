@@ -6,13 +6,11 @@ from content_types import plain, LABELS
 
 def ipa_font(size):
     """Use a Unicode font with IPA, combining marks and stress symbols."""
-    import os
-    from pathlib import Path
     from PIL import ImageFont
-    directory = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts"
-    for name in ("segoeui.ttf", "arial.ttf"):
-        if (directory / name).is_file():
-            return ImageFont.truetype(str(directory / name), size)
+    from platform_support import font_paths
+    for path in font_paths(ipa=True):
+        if path.is_file():
+            return ImageFont.truetype(str(path), size)
     raise ValueError("Thiếu font Unicode hỗ trợ IPA (Segoe UI hoặc Arial).")
 
 

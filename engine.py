@@ -102,10 +102,10 @@ class Settings:
 
 
 def font(size, bold=False):
-    directory = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts"
-    for name in (["arialbd.ttf", "segoeuib.ttf"] if bold else ["arial.ttf", "segoeui.ttf"]):
-        if (directory / name).exists():
-            return ImageFont.truetype(str(directory / name), size)
+    from platform_support import font_paths
+    for path in font_paths(bold):
+        if path.is_file():
+            return ImageFont.truetype(str(path), size)
     return ImageFont.load_default(size=size)
 
 

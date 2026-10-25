@@ -6,6 +6,8 @@ import shutil
 import tempfile
 from pathlib import Path
 
+from platform_support import data_directory
+
 from background_media import validate_background, is_video, VIDEO_EXTENSIONS
 
 
@@ -118,8 +120,7 @@ class UserSettingsStore:
 
 class BackgroundStore:
     def __init__(self, directory=None):
-        self.directory = Path(directory) if directory is not None else Path(
-            os.environ.get("LOCALAPPDATA", str(Path.home() / ".local" / "share"))) / "QuizStudio"
+        self.directory = Path(directory) if directory is not None else data_directory()
         self.config = self.directory / "background.json"
         self.warning = ""
 

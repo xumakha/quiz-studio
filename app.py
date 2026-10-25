@@ -1,3 +1,4 @@
+from platform_support import AudioPlayer, open_in_file_manager
 import asyncio
 import json
 import os
@@ -28,6 +29,7 @@ class App(tk.Tk):
         self.minsize(1100, 740)
         self.configure(bg="#10172b")
         self.events = queue.Queue()
+        self.audio_player = AudioPlayer()
         self.cancel = threading.Event()
         self.busy = False
         self.rows = []
@@ -244,9 +246,7 @@ class App(tk.Tk):
         self.seek_preview = lambda value: None
         if getattr(self, "preview_cancel", None):
             self.preview_cancel.set()
-        if sys.platform == "win32":
-            import winsound
-            winsound.PlaySound(None, winsound.SND_PURGE)
+        self.audio_player.stop()
         timer = getattr(self, "playback_timer", None)
         if timer:
             self.after_cancel(timer)
@@ -330,8 +330,7 @@ class App(tk.Tk):
                 self.preview_seek.set(elapsed)
                 if started is None:
                     if audio:
-                        import winsound
-                        winsound.PlaySound(str(audio_source or audio), winsound.SND_FILENAME | winsound.SND_ASYNC)
+                        self.audio_player.play(audio_source or audio)
                     started = time.monotonic()
                     started -= elapsed
                 elapsed += prepared.seconds - offset
@@ -354,8 +353,7 @@ class App(tk.Tk):
             offset = max(0, timestamp - sum(p.seconds for _, p in scenes[:position]))
             source = None
             if audio:
-                import winsound
-                winsound.PlaySound(None, winsound.SND_PURGE)
+                self.audio_player.stop()
                 source = directory / "seek-track.wav"
                 with wave.open(str(audio), "rb") as track, wave.open(str(source), "wb") as target:
                     target.setparams(track.getparams())
@@ -424,7 +422,7 @@ class App(tk.Tk):
         try:
             directory = self.background_store.library_directory(kind)
             directory.mkdir(parents=True, exist_ok=True)
-            os.startfile(str(directory.resolve()))
+            open_in_file_manager(directory)
         except OSError as error:
             messagebox.showerror("Không mở được thư mục nền", str(error))
 
@@ -489,6 +487,7 @@ class App(tk.Tk):
     def voice_preview(self):
         if self.busy:
             return
+        self.stop_preview()
         try:
             settings = self.settings()
         except Exception as error:
@@ -496,17 +495,16 @@ class App(tk.Tk):
             return
         def job():
             self.events.put(("log", "Đang tạo giọng nghe thử…"))
-            directory = Path(tempfile.mkdtemp(prefix="quiz-voice-"))
-            target = directory / "preview.wav"
-            text = "Xin chào! Bạn đã sẵn sàng cho câu hỏi tiếp theo chưa? [en]Welcome to the quiz challenge![/en]"
-            if settings.voice.startswith("en") or settings.voice == "google:en":
-                text = "Welcome! Are you ready for the next question?"
-            renderer = Renderer(settings, cancel=self.cancel)
-            asyncio.run(renderer.speech(text, target, directory))
-            import winsound
-            winsound.PlaySound(str(target), winsound.SND_FILENAME)
-            import shutil
-            shutil.rmtree(directory)
+            with tempfile.TemporaryDirectory(prefix="quiz-voice-") as temporary:
+                directory = Path(temporary)
+                target = directory / "preview.wav"
+                text = "Xin chào! Bạn đã sẵn sàng cho câu hỏi tiếp theo chưa? [en]Welcome to the quiz challenge![/en]"
+                if settings.voice.startswith("en") or settings.voice == "google:en":
+                    text = "Welcome! Are you ready for the next question?"
+                renderer = Renderer(settings, cancel=self.cancel)
+                asyncio.run(renderer.speech(text, target, directory))
+                renderer.check()
+                self.audio_player.play(target, wait=True)
             return "Đã phát giọng nghe thử."
         self.start_job(job)
 
@@ -532,8 +530,7 @@ class App(tk.Tk):
             messagebox.showwarning("Không tìm thấy video", f"Video đã bị chuyển hoặc xóa:\n{self.last_output}")
             return
         try:
-            # Windows Explorer selects the completed file, including paths with spaces.
-            subprocess.Popen(["explorer.exe", f'/select,{self.last_output}'])
+            open_in_file_manager(self.last_output, select=True)
         except OSError as error:
             messagebox.showerror("Không mở được thư mục", str(error))
 

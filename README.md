@@ -1,8 +1,32 @@
-# Quiz Studio cho Windows
+# Quiz Studio cho Windows và macOS
+
+App dùng chung một bộ mã nguồn và tự nhận hệ điều hành. Windows phát âm thanh bằng `winsound`, mở thư mục bằng Explorer; macOS phát bằng `afplay`, mở thư mục bằng Finder. Không cần sửa code hoặc chọn hệ điều hành trong app.
+
+| Thao tác | Windows | macOS |
+| --- | --- | --- |
+| Khởi động | `run.bat` | `run.command` |
+| Đóng gói bản mới | `build.bat` → `.exe` | `build-macos.command` → `.app` |
+| Môi trường Python | `.venv` | `.venv-macos` |
+
+Khi chuyển mã nguồn giữa hai máy, cài thư viện riêng bằng launcher trên mỗi máy; không sao chép môi trường Python. Bản `.exe`/`.app` cũ không tự cập nhật theo mã nguồn: cần đóng gói lại trên hệ điều hành tương ứng để dùng các sửa đổi mới. `run.bat` ưu tiên mở bản `.exe` đã có; nếu muốn dùng mã nguồn mới trực tiếp, chạy `.venv\Scripts\python.exe app.py` sau khi cài thư viện.
 
 Repository chứa mã nguồn và JSON mẫu; không chứa thư viện cài đặt, video xuất hay bản `.exe`. Sau khi clone, cài Python 3.11 trở lên rồi chạy `run.bat` để cài thư viện và mở app từ mã nguồn. Chạy `build.bat` để tạo bản `.exe` tại `release-samples/QuizStudio`.
 
 Nhấp đúp **Mo-QuizStudio.bat** để mở bản mới nhất tại `release-samples/QuizStudio/QuizStudio.exe`. Khi chuyển sang máy khác, sao chép cả thư mục `release-samples/QuizStudio`, bao gồm `_internal`. Không chạy file trong thư mục `build`: đó là file đóng gói trung gian.
+
+## Chạy trên macOS
+
+Cài Python **3.11 trở lên có Tkinter**, sau đó nhấp đúp `run.command` hoặc chạy `./run.command` trong Terminal. Lần đầu cần Internet để cài thư viện vào `.venv-macos` riêng; các lần sau vẫn kiểm tra thư viện trước khi mở app. Windows tiếp tục dùng các file `.bat` như trước.
+
+Launcher tự tìm Python 3.11+ có Tkinter trong môi trường dự án, PATH, Homebrew và bộ cài python.org; vì vậy vẫn chạy được khi lệnh `python3` trỏ tới Python cũ của macOS. Có thể chọn trình thông dịch bằng `QUIZ_PYTHON=/duong/dan/python3 ./run.command`. Nếu thiếu Tkinter, dùng bộ cài Python từ python.org hoặc cài gói Homebrew `python-tk` khớp phiên bản Python đang dùng.
+
+Nếu Python Homebrew báo lỗi `pyexpat` / `Symbol not found: _XML_SetAllocTrackerActivationThreshold`, chạy `brew install expat` rồi mở lại. Launcher sẽ dùng thư viện Expat này riêng cho tiến trình app khi cần, không thay thư viện hệ thống.
+
+Chạy `./build-macos.command` trên Mac để tạo **`release-macos/QuizStudio.app`**, sau đó mở bằng Finder. Bản build theo kiến trúc Python của máy đóng gói (Apple Silicon hoặc Intel); nên build trên từng kiến trúc nếu cần phát hành cho cả hai. Bản `.app` chưa được ký bằng Developer ID hoặc notarize. Nếu macOS chặn mở, dùng **System Settings → Privacy & Security → Open Anyway** sau khi xác nhận nguồn ứng dụng.
+
+Cài đặt và thư viện media trên Mac được lưu tại `~/Library/Application Support/QuizStudio`. Nút mở thư mục sử dụng Finder; video xuất xong được chọn sẵn trong Finder. Font render dùng Arial có sẵn trên macOS, bao gồm tiếng Việt và IPA.
+
+Chạy kiểm tra: `.venv-macos/bin/python -m unittest discover -v`.
 
 ## Tạo video
 
