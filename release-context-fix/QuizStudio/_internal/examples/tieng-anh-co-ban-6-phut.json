@@ -1,0 +1,215 @@
+{
+  "title": "TIẾNG ANH CƠ BẢN • NGƯỜI MỚI HỌC",
+  "questions": [
+    {
+      "id": "basic-english-01",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Chào hỏi",
+      "question": "Khi gặp ai đó vào buổi sáng, bạn nên nói gì?",
+      "options": [
+        "[en]Good morning[/en]",
+        "[en]Good night[/en]",
+        "[en]Goodbye[/en]",
+        "[en]Thank you[/en]"
+      ],
+      "answer": "A",
+      "explanation": "[en]Good morning[/en] có nghĩa là chào buổi sáng. [en]Good night[/en] thường dùng để chúc ngủ ngon. Hãy nhớ: buổi sáng, chúng ta nói [en]Good morning[/en]."
+    },
+    {
+      "id": "basic-english-02",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Giới thiệu tên",
+      "question": "Điền từ còn thiếu: [en]My name ... Anna.[/en]",
+      "options": [
+        "[en]am[/en]",
+        "[en]is[/en]",
+        "[en]are[/en]",
+        "[en]be[/en]"
+      ],
+      "answer": "B",
+      "explanation": "Câu đúng là [en]My name is Anna.[/en], nghĩa là tên tôi là Anna. Khi giới thiệu tên, bạn có thể dùng mẫu [en]My name is[/en] rồi thêm tên của mình."
+    },
+    {
+      "id": "basic-english-03",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Đại từ nhân xưng",
+      "question": "Từ nào trong tiếng Anh có nghĩa là chúng tôi hoặc chúng ta?",
+      "options": [
+        "[en]I[/en]",
+        "[en]You[/en]",
+        "[en]We[/en]",
+        "[en]They[/en]"
+      ],
+      "answer": "C",
+      "explanation": "[en]We[/en] có nghĩa là chúng tôi hoặc chúng ta. [en]I[/en] là tôi, [en]you[/en] là bạn, còn [en]they[/en] là họ. Ví dụ: [en]We are friends.[/en] nghĩa là chúng tôi là bạn bè."
+    },
+    {
+      "id": "basic-english-04",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Động từ to be",
+      "question": "Chọn từ đúng: [en]I ... a student.[/en]",
+      "options": [
+        "[en]is[/en]",
+        "[en]are[/en]",
+        "[en]be[/en]",
+        "[en]am[/en]"
+      ],
+      "answer": "D",
+      "explanation": "Với chủ ngữ [en]I[/en], chúng ta dùng [en]am[/en]. Câu hoàn chỉnh là [en]I am a student.[/en], nghĩa là tôi là học sinh hoặc sinh viên. Hãy nhớ cặp [en]I am[/en]."
+    },
+    {
+      "id": "basic-english-05",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Động từ to be",
+      "question": "Điền từ còn thiếu: [en]They ... happy.[/en]",
+      "options": [
+        "[en]are[/en]",
+        "[en]am[/en]",
+        "[en]is[/en]",
+        "[en]be[/en]"
+      ],
+      "answer": "A",
+      "explanation": "[en]They[/en] đi với [en]are[/en]. Câu [en]They are happy.[/en] nghĩa là họ đang vui. Bạn cũng dùng [en]are[/en] với [en]we[/en] và [en]you[/en]. Hãy đọc lại: [en]They are happy.[/en]"
+    },
+    {
+      "id": "basic-english-06",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Mạo từ a và an",
+      "question": "Chọn từ đúng: [en]This is ... apple.[/en]",
+      "options": [
+        "[en]a[/en]",
+        "[en]an[/en]",
+        "[en]two[/en]",
+        "[en]many[/en]"
+      ],
+      "answer": "B",
+      "explanation": "[en]Apple[/en] bắt đầu bằng một âm nguyên âm nên dùng [en]an[/en]. Câu đúng là [en]This is an apple.[/en], nghĩa là đây là một quả táo. Chọn mạo từ theo âm đầu của từ."
+    },
+    {
+      "id": "basic-english-07",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Số đếm",
+      "question": "Số nào đứng ngay sau [en]seven[/en] trong dãy số đếm?",
+      "options": [
+        "[en]six[/en]",
+        "[en]nine[/en]",
+        "[en]eight[/en]",
+        "[en]ten[/en]"
+      ],
+      "answer": "C",
+      "explanation": "[en]Seven[/en] là bảy và [en]eight[/en] là tám. Hãy đọc dãy số: [en]six, seven, eight, nine, ten[/en]. Như vậy, số đứng ngay sau [en]seven[/en] là [en]eight[/en]."
+    },
+    {
+      "id": "basic-english-08",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Màu sắc",
+      "question": "Từ nào có nghĩa là màu xanh dương?",
+      "options": [
+        "[en]red[/en]",
+        "[en]yellow[/en]",
+        "[en]green[/en]",
+        "[en]blue[/en]"
+      ],
+      "answer": "D",
+      "explanation": "[en]Blue[/en] là màu xanh dương. [en]Green[/en] là xanh lá cây, [en]red[/en] là đỏ và [en]yellow[/en] là vàng. Ví dụ: [en]The sky is blue.[/en] nghĩa là bầu trời có màu xanh dương."
+    },
+    {
+      "id": "basic-english-09",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Gia đình",
+      "question": "Từ nào trong tiếng Anh có nghĩa là mẹ?",
+      "options": [
+        "[en]mother[/en]",
+        "[en]father[/en]",
+        "[en]brother[/en]",
+        "[en]sister[/en]"
+      ],
+      "answer": "A",
+      "explanation": "[en]Mother[/en] nghĩa là mẹ. [en]Father[/en] là bố, [en]brother[/en] là anh hoặc em trai, còn [en]sister[/en] là chị hoặc em gái. Bạn có thể nói: [en]This is my mother.[/en]"
+    },
+    {
+      "id": "basic-english-10",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Danh từ số nhiều",
+      "question": "Dạng số nhiều của từ [en]book[/en] là gì?",
+      "options": [
+        "[en]bookes[/en]",
+        "[en]books[/en]",
+        "[en]bookies[/en]",
+        "[en]book[/en]"
+      ],
+      "answer": "B",
+      "explanation": "Dạng số nhiều của [en]book[/en] là [en]books[/en]. Với nhiều danh từ thông thường, bạn thêm chữ [en]s[/en] ở cuối. Một quyển sách là [en]one book[/en], hai quyển sách là [en]two books[/en]."
+    },
+    {
+      "id": "basic-english-11",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Hiện tại đơn",
+      "question": "Chọn từ đúng: [en]She ... English every day.[/en]",
+      "options": [
+        "[en]study[/en]",
+        "[en]studying[/en]",
+        "[en]studies[/en]",
+        "[en]to study[/en]"
+      ],
+      "answer": "C",
+      "explanation": "Đáp án là [en]studies[/en]. Trong hiện tại đơn, với chủ ngữ [en]she[/en], động từ [en]study[/en] đổi thành [en]studies[/en]. Câu này nghĩa là cô ấy học tiếng Anh mỗi ngày."
+    },
+    {
+      "id": "basic-english-12",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Từ để hỏi",
+      "question": "Muốn hỏi một người đến từ đâu, bạn chọn câu nào?",
+      "options": [
+        "[en]What is your name?[/en]",
+        "[en]How old are you?[/en]",
+        "[en]How are you?[/en]",
+        "[en]Where are you from?[/en]"
+      ],
+      "answer": "D",
+      "explanation": "[en]Where are you from?[/en] nghĩa là bạn đến từ đâu. [en]Where[/en] dùng để hỏi về nơi chốn. Bạn có thể trả lời: [en]I am from Vietnam.[/en], nghĩa là tôi đến từ Việt Nam."
+    },
+    {
+      "id": "basic-english-13",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Câu phủ định",
+      "question": "Chọn từ còn thiếu: [en]I ... not like coffee.[/en]",
+      "options": [
+        "[en]do[/en]",
+        "[en]does[/en]",
+        "[en]am[/en]",
+        "[en]is[/en]"
+      ],
+      "answer": "A",
+      "explanation": "Với [en]I[/en], câu phủ định ở hiện tại đơn dùng [en]do not[/en], thường viết ngắn là [en]don't[/en]. [en]I do not like coffee.[/en] nghĩa là tôi không thích cà phê."
+    },
+    {
+      "id": "basic-english-14",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Giới từ vị trí",
+      "question": "Điền từ đúng: [en]The book is ... the table.[/en]\nQuyển sách nằm trên mặt bàn.",
+      "options": [
+        "[en]under[/en]",
+        "[en]on[/en]",
+        "[en]in[/en]",
+        "[en]behind[/en]"
+      ],
+      "answer": "B",
+      "explanation": "[en]On[/en] có nghĩa là trên, dùng khi vật ở trên một bề mặt. Câu đúng là [en]The book is on the table.[/en]. [en]Under[/en] là bên dưới, còn [en]behind[/en] là phía sau."
+    },
+    {
+      "id": "basic-english-15",
+      "subject": "TIẾNG ANH CƠ BẢN",
+      "lesson": "Giao tiếp lịch sự",
+      "question": "Khi ai đó nói [en]Thank you[/en], câu đáp lại lịch sự nào phù hợp?",
+      "options": [
+        "[en]I'm sorry[/en]",
+        "[en]Good morning[/en]",
+        "[en]You're welcome[/en]",
+        "[en]See you tomorrow[/en]"
+      ],
+      "answer": "C",
+      "explanation": "[en]You're welcome[/en] là cách đáp lại lời cảm ơn, nghĩa là không có gì. Bạn vừa hoàn thành mười lăm câu tiếng Anh cơ bản. Hãy ôn lại những câu sai và luyện nói mỗi ngày."
+    }
+  ]
+}

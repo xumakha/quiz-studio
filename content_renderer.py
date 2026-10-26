@@ -97,16 +97,17 @@ def render_scene(row, scene, number, total, title, settings):
         block(row.get("level", ""), 410, 100, 32, color="#58758c")
         block(row["meaning_vi"], 535, 190, 76, field="nghĩa tiếng Việt")
         if row.get("context_hint", "").strip():
-            block(row["context_hint"], 715, 100, 32, color="#58758c", field="chú thích nghĩa tiếng Việt", bold=False)
+            # Two 32 px lines need 88 px plus the block's 32 px padding.
+            block(row["context_hint"], 715, 120, 32, color="#58758c", field="chú thích nghĩa tiếng Việt", bold=False)
         # Fit the complete mask on one line, including twenty-letter words.
         word = plain(scene.text)
         size = 76
         while size > 30 and draw.textlength(word, font=font(size, True)) > 864:
             size -= 1
         if scene.phase in ("question", "countdown", "answer", "explanation"):
-            block(word, 830 if row.get("context_hint", "").strip() else 750, 140, size, color="#1267b1", background="#f8fcff", field="từ cần đoán")
+            block(word, 850 if row.get("context_hint", "").strip() else 750, 140, size, color="#1267b1", background="#f8fcff", field="từ cần đoán")
         else:
-            block(word, 830 if row.get("context_hint", "").strip() else 750, 210, 52, field="ví dụ")
+            block(word, 850 if row.get("context_hint", "").strip() else 750, 210, 52, field="ví dụ")
         if scene.phase in ("answer", "explanation") and row.get("ipa", "").strip():
             ipa = row["ipa"].strip()
             ipa_size = 48
@@ -115,7 +116,7 @@ def render_scene(row, scene, number, total, title, settings):
             face = ipa_font(ipa_size)
             if draw.textlength(ipa, font=face) > 864:
                 raise ValueError(f"Câu {number}: IPA quá dài để hiển thị rõ.")
-            draw.text((540, 995 if row.get("context_hint", "").strip() else 915), ipa, font=face, anchor="mt", fill="#42637f")
+            draw.text((540, 1015 if row.get("context_hint", "").strip() else 915), ipa, font=face, anchor="mt", fill="#42637f")
         if scene.phase == "question":
             block("Chuẩn bị", 1160, 110, 48)
         elif scene.phase in ("explanation", "example"):

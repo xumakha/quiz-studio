@@ -1,0 +1,24 @@
+{
+  "schema_version": 2,
+  "title": "MỘT CHÚT ENGLISH",
+  "mode": "multiple_choice",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "multiple_choice-01",
+      "type": "multiple_choice",
+      "subject": "TRẮC NGHIỆM ABCD",
+      "question": "[en]She ... a student.[/en]",
+      "options": [
+        "[en]am[/en]",
+        "[en]is[/en]",
+        "[en]are[/en]",
+        "[en]be[/en]"
+      ],
+      "answer": "B",
+      "explanation": "Chủ ngữ She dùng is."
+    }
+  ]
+}

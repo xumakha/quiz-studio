@@ -14,6 +14,22 @@ import wave
 
 
 class GuessWordTests(unittest.TestCase):
+    def test_two_line_context_hint_keeps_readable_font(self):
+        from PIL import ImageDraw
+        doc = sample_document('guess_word')
+        hint = 'Làm một việc gì đó tốt hơn so với lần trước\nGiúp công việc đạt kết quả tốt hơn'
+        doc['items'][0].update(context_hint=hint, ipa='/ɪmˈpruːv/')
+        title, rows, _ = normalize(doc, parse_legacy_questions)
+        settings = Settings(width=180, height=320)
+        original = ImageDraw.ImageDraw.text
+        for scene in plan_item(rows[0], settings):
+            with self.subTest(phase=scene.phase):
+                with patch.object(ImageDraw.ImageDraw, 'text', autospec=True, side_effect=original) as draw:
+                    render_scene(rows[0], scene, 4, 10, title, settings)
+                calls = [c for c in draw.call_args_list if c.args[2] in hint.splitlines()]
+                self.assertEqual(len(calls), 2)
+                self.assertTrue(all(c.kwargs['font'].size >= 30 for c in calls))
+
     def test_context_hint_visible_through_question_countdown_and_reveal(self):
         from PIL import ImageDraw
         doc = sample_document('guess_word')
