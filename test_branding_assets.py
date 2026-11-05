@@ -11,9 +11,38 @@ from branding import add_logo
 from content_renderer import render_ending
 from engine import Settings, frame, parse_questions
 from preferences import BrandingStore
+from preferences import UserSettingsStore
 
 
 class BrandingAssetTests(unittest.TestCase):
+    def test_custom_watermark_visible_over_cards_with_footer_disabled(self):
+        from dataclasses import replace
+        from content_types import sample_document
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "small-logo.png"
+            Image.new("RGBA", (24, 24), (255, 0, 0, 255)).save(source)
+            for template in ("exam", "military", "tech", "english", "math", "classic"):
+                for kind in ("multiple_choice", "fill_blank"):
+                    title, rows = parse_questions(json.dumps(sample_document(kind)))
+                    settings = Settings(template=template, logo_image=str(source), logo_watermark_enabled=True,
+                                        watermark_enabled=False, left_logo_enabled=False, right_chibi_enabled=False)
+                    visible = frame(rows[0], 1, 1, title, settings)
+                    hidden = frame(rows[0], 1, 1, title, replace(settings, logo_watermark_enabled=False))
+                    with self.subTest(template=template, kind=kind):
+                        # Center lies inside the opaque question/answer cards.
+                        self.assertNotEqual(visible.getpixel((540, 1056)), hidden.getpixel((540, 1056)))
+                        self.assertEqual(visible.crop((80, 1516, 1000, 1566)).tobytes(), hidden.crop((80, 1516, 1000, 1566)).tobytes())
+
+    def test_watermark_setting_migrates_and_saves_independently(self):
+        for enabled in (False, True):
+            self.assertEqual(UserSettingsStore.validated({"watermark_enabled": enabled})["logo_watermark_enabled"], enabled)
+        with tempfile.TemporaryDirectory() as directory:
+            store = UserSettingsStore(directory)
+            store.save({"watermark_enabled": False, "logo_watermark_enabled": True})
+            saved = store.load()
+            self.assertFalse(saved["watermark_enabled"])
+            self.assertTrue(saved["logo_watermark_enabled"])
+
     def test_library_reuses_uploads_after_reset_reopen_and_source_removal(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

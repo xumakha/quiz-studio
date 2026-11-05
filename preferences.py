@@ -18,6 +18,7 @@ USER_DEFAULTS = {
     "rate": 0, "pitch": 0, "countdown": 5, "resolution": "1080 × 1920",
     "video_template": "Tự động theo môn học", "brand": "QUIZ STUDIO",
     "watermark_enabled": True, "read_options": True, "read_explanation": True, "speech": True,
+    "logo_watermark_enabled": True,
     "music_volume": 12, "reveal": False,
     "ending_text": DEFAULT_ENDING_TEXT,
     "left_logo_enabled": True, "right_chibi_enabled": True,
@@ -42,7 +43,8 @@ class UserSettingsStore:
         ranges = {"rate": (-50, 100), "pitch": (-50, 50), "countdown": (1, 30), "music_volume": (0, 100)}
         result = dict(USER_DEFAULTS)
         for key, default in USER_DEFAULTS.items():
-            value = data.get(key, default)
+            fallback = data.get("watermark_enabled", default) if key == "logo_watermark_enabled" else default
+            value = data.get(key, fallback)
             if type(value) is not type(default):
                 continue
             if key in choices and value not in choices[key]:

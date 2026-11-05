@@ -4,7 +4,7 @@ import math
 import re
 import unicodedata
 from PIL import Image, ImageDraw, ImageOps
-from branding import CONTENT_MARGIN_X, add_logo, compose_content
+from branding import CONTENT_MARGIN_X, add_branding, compose_content
 
 TEMPLATES = {"Tự động theo môn học": "auto", "Một chút English · Học ngôn ngữ": "english",
              "Luyện thi · Chứng chỉ": "exam", "Quân sự · ASVAB": "military", "Tin học · Công nghệ": "tech",
@@ -59,8 +59,6 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     background = image
     image = Image.new("RGBA", background.size)
     draw = ImageDraw.Draw(image,"RGBA")
-    if settings.watermark_enabled:
-        add_logo(image, watermark=True, logo_image=settings.logo_image)
     def text(text, rect, size, color=ink, bold=True, align="center"):
         l,t,r,b=rect
         face,lines,step=fitted(draw,text,size,r-l,b-t,bold)
@@ -113,5 +111,5 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     if settings.watermark_enabled and settings.brand.strip():
         draw.rounded_rectangle((content_left,1420,content_right,1470),15,fill=(255,255,255,185))
         text(settings.brand,(content_left+30,1428,content_right-30,1462),26,muted)
-    add_logo(image, settings=settings)
+    add_branding(image, settings)
     return compose_content(background, image, settings)

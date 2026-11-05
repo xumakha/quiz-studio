@@ -74,7 +74,7 @@ class AppBackgroundTests(unittest.TestCase):
                       "video_template": "Tiếng Anh · Xanh sáng", "brand": "Mọt Chữ English",
                       "watermark_enabled": False, "read_options": False, "read_explanation": False, "speech": False,
                       "music_volume": 27, "reveal": True, "ending_text": "Cảm ơn bạn đã xem, hẹn gặp lại!",
-                      "left_logo_enabled": False, "right_chibi_enabled": False}
+                      "left_logo_enabled": False, "right_chibi_enabled": False, "logo_watermark_enabled": True}
             self.assertEqual(set(chosen), set(USER_DEFAULTS))
             host = App(data_dir=root / "data")
             host.withdraw()

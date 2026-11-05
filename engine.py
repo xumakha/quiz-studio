@@ -98,6 +98,7 @@ class Settings:
     speech: bool = True
     brand: str = "QUIZ STUDIO"
     watermark_enabled: bool = True
+    logo_watermark_enabled: bool | None = None
     logo_image: str = ""
     ending_image: str = ""
     ending_text: str = DEFAULT_ENDING_TEXT

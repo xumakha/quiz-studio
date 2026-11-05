@@ -8,10 +8,10 @@ if not exist ".venv\Scripts\python.exe" (
 if errorlevel 1 exit /b 1
 ".venv\Scripts\python.exe" -m pip install pyinstaller
 if errorlevel 1 exit /b 1
-".venv\Scripts\python.exe" -m PyInstaller --noconfirm --clean --distpath release-prep-english --workpath build-prep QuizStudio.spec
+".venv\Scripts\python.exe" -m PyInstaller --noconfirm --clean --distpath release-watermark --workpath build-prep QuizStudio.spec
 if errorlevel 1 exit /b 1
 echo.
-echo Dong goi thanh cong. Mo Mo-QuizStudio.bat hoac release-prep-english\QuizStudio\QuizStudio.exe.
+echo Dong goi thanh cong. Mo Mo-QuizStudio.bat hoac release-watermark\QuizStudio\QuizStudio.exe.
 echo Thu muc build chi chua file trung gian, khong chay exe trong do.
-echo Khi sao chep app, giu nguyen ca thu muc release-prep-english\QuizStudio va _internal.
+echo Khi sao chep app, giu nguyen ca thu muc release-watermark\QuizStudio va _internal.
 pause

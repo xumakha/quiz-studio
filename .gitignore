@@ -30,4 +30,5 @@ build-tabs/
 build-prep/
 release-prep/
 release-prep-english/
+release-watermark/
 .voicestudio-runtime/

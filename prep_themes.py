@@ -1,7 +1,7 @@
 """Exam, military and computing layouts on the shared portrait canvas."""
 from PIL import Image, ImageDraw, ImageOps
 from background_media import open_background
-from branding import CONTENT_MARGIN_X, add_logo, compose_content
+from branding import CONTENT_MARGIN_X, add_branding, compose_content
 
 
 PALETTES = {
@@ -23,8 +23,6 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
             background = ImageOps.fit(ImageOps.exif_transpose(source).convert("RGB"), background.size)
         background = Image.blend(background, Image.new("RGB", background.size, "#081022"), settings.background_dim / 100)
     image = Image.new("RGBA", background.size)
-    if settings.watermark_enabled:
-        add_logo(image, watermark=True, logo_image=settings.logo_image)
     draw = ImageDraw.Draw(image)
     left, right = CONTENT_MARGIN_X, 1080-CONTENT_MARGIN_X
 
@@ -69,5 +67,5 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
             draw.rounded_rectangle((left+24, 1280, left+24+(right-left-48)*fraction, 1292), 6, fill=accent)
     if settings.watermark_enabled and settings.brand.strip():
         text(settings.brand, (left, 1420, right, 1470), 27, muted)
-    add_logo(image, settings=settings)
+    add_branding(image, settings)
     return compose_content(background, image, settings)

@@ -118,7 +118,7 @@ class WorkspaceProfiles:
         if profile_id in ("easy-prep", "asvab-prep"):
             settings["ending_text"] = ""
             settings["video_template"] = "Quân sự · ASVAB" if profile_id == "asvab-prep" else "Luyện thi · Chứng chỉ"
-            settings.update(left_logo_enabled=False, right_chibi_enabled=False, watermark_enabled=False)
+            settings.update(left_logo_enabled=False, right_chibi_enabled=False, watermark_enabled=False, logo_watermark_enabled=False)
         settings.update(music_file="", music_name="")
         defaults = {
             "voicestudio.json": VOICE_STUDIO_DEFAULTS,

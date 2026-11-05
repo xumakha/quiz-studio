@@ -42,7 +42,7 @@ def render_ending(settings):
 
 def render_scene(row, scene, number, total, title, settings):
     from engine import fitted, font, wrap
-    from branding import add_logo, compose_content, CONTENT_MARGIN_X
+    from branding import add_branding, compose_content, CONTENT_MARGIN_X
     if row.get("type", "multiple_choice") == "multiple_choice":
         from video_themes import render_frame
         return render_frame(row, number, total, title, settings, scene.phase == "answer", scene.countdown)
@@ -56,8 +56,6 @@ def render_scene(row, scene, number, total, title, settings):
         image = Image.blend(image, Image.new("RGB", image.size, "#081022"), settings.background_dim / 100)
     background_image = image
     image = Image.new("RGBA", background_image.size)
-    if settings.watermark_enabled:
-        add_logo(image, watermark=True, logo_image=settings.logo_image)
     draw = ImageDraw.Draw(image)
     margin = CONTENT_MARGIN_X
     def block(text, y, height, size=58, color="#112c50", background=None, highlight=None, field="nội dung", left=margin, right=1080-margin, align="center", bold=True):
@@ -193,7 +191,7 @@ def render_scene(row, scene, number, total, title, settings):
             draw.rounded_rectangle((margin+30, 1344, margin+30+(1080-2*margin-60)*fraction, 1356), radius=6, fill=palette["accent"] if palette else "#3887bb")
     if settings.watermark_enabled:
         block(settings.brand, 1400, 76, 30)
-    add_logo(image, settings=settings)
+    add_branding(image, settings)
     return compose_content(background_image, image, settings)
 
 

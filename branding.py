@@ -22,13 +22,16 @@ def compose_content(background, content, settings):
 
 
 @lru_cache(maxsize=32)
-def _logo(width, height, opacity, path=""):
+def _logo(width, height, opacity, path="", upscale=False):
     with Image.open(path or Path(__file__).resolve().parent / "assets" / "logo-mce.png") as source:
         logo = ImageOps.exif_transpose(source).convert("RGBA")
     bounds = logo.getbbox()
     if bounds:
         logo = logo.crop(bounds)
-    logo.thumbnail((width, height), Image.Resampling.LANCZOS)
+    if upscale:
+        logo = ImageOps.contain(logo, (width, height), Image.Resampling.LANCZOS)
+    else:
+        logo.thumbnail((width, height), Image.Resampling.LANCZOS)
     logo.putalpha(logo.getchannel("A").point(lambda value: round(value * opacity)))
     return logo
 
@@ -53,7 +56,7 @@ def add_logo(image, *, watermark=False, logo_image="", settings=None):
             image.paste(asset, position, asset)
 
     if watermark:
-        logo = _logo(800, 800, 0.07, logo_image)
+        logo = _logo(800, 800, 0.07, logo_image, upscale=True)
         composite(logo, ((image.width - logo.width) // 2, (image.height - logo.height) // 2))
         return
     if settings is None or settings.left_logo_enabled:
@@ -62,3 +65,13 @@ def add_logo(image, *, watermark=False, logo_image="", settings=None):
     if settings is None or settings.right_chibi_enabled:
         character = _character("" if settings is None else settings.right_chibi_image)
         composite(character, (image.width - character.width - CONTENT_MARGIN_X, 48))
+
+
+def add_branding(image, settings):
+    """Keep the watermark visible over cards, with independent corner controls."""
+    enabled = settings.logo_watermark_enabled
+    if enabled is None:  # Preserve callers using the original Settings API.
+        enabled = settings.watermark_enabled
+    if enabled:
+        add_logo(image, watermark=True, logo_image=settings.logo_image)
+    add_logo(image, settings=settings)

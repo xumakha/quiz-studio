@@ -58,6 +58,7 @@ def build_ui(app, saved):
     app.brand = tk.StringVar(master=app, value="QUIZ STUDIO")
     app.ending_text = tk.StringVar(master=app)
     app.watermark_enabled = tk.BooleanVar(master=app, value=True)
+    app.logo_watermark_enabled = tk.BooleanVar(master=app, value=True)
     app.left_logo_enabled = tk.BooleanVar(master=app, value=True)
     app.right_chibi_enabled = tk.BooleanVar(master=app, value=True)
     app.read_options, app.speech = tk.BooleanVar(master=app, value=True), tk.BooleanVar(master=app, value=True)
@@ -231,6 +232,8 @@ def build_ui(app, saved):
         ("ending_image", "Ảnh cuối video", "Chọn ảnh cuối video"),
     ):
         section(video, caption)
+        if kind == "logo_image":
+            toggle(video, "Hiện logo chìm", app.logo_watermark_enabled, app.show_preview)
         if kind in ("left_logo_image", "right_chibi_image"):
             variable = app.left_logo_enabled if kind == "left_logo_image" else app.right_chibi_enabled
             toggle(video, "Hiện " + caption.lower(), variable, app.show_preview)

@@ -216,7 +216,7 @@ class VideoTab(tk.Frame):
             dialogue_voice_b="voicestudio:dialogue_b" if studio else VOICES[self.dialogue_voice_b.get()],
             rate=rate, pitch=pitch, countdown=countdown, width=width, height=height,
             read_options=self.read_options.get(), read_explanation=self.read_explanation.get(), speech=self.speech.get(),
-            brand=self.brand.get(), watermark_enabled=self.watermark_enabled.get(), template=TEMPLATES[self.video_template.get()],
+            brand=self.brand.get(), watermark_enabled=self.watermark_enabled.get(), logo_watermark_enabled=self.logo_watermark_enabled.get(), template=TEMPLATES[self.video_template.get()],
             background=self.background, background_dim=dim, music=self.music, music_volume=volume / 100,
             logo_image=self.logo_image, ending_image=self.ending_image, ending_text=self.ending_text.get(),
             left_logo_image=self.left_logo_image, right_chibi_image=self.right_chibi_image,
@@ -519,6 +519,8 @@ class VideoTab(tk.Frame):
             return
         try:
             self.update_branding(self.branding_store.select_saved(kind, self.branding_library_entries[index]["path"]))
+            if kind == "logo_image":
+                self.logo_watermark_enabled.set(True)
             self.show_ending_preview() if kind == "ending_image" else self.show_preview()
             self.status.configure(text="Đã chọn ảnh từ thư viện cho tab này.")
         except (OSError, ValueError) as error:
@@ -543,6 +545,8 @@ class VideoTab(tk.Frame):
             return
         try:
             self.update_branding(self.branding_store.select(kind, path))
+            if kind == "logo_image":
+                self.logo_watermark_enabled.set(True)
             self.show_ending_preview() if kind == "ending_image" else self.show_preview()
             self.status.configure(text="Đã lưu ảnh. Lựa chọn chỉ thay đổi trong tab này.")
         except (OSError, ValueError) as error:

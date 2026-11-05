@@ -3,7 +3,7 @@ from background_media import open_background
 import math
 import re
 from PIL import Image, ImageDraw, ImageOps
-from branding import CONTENT_MARGIN_X, add_logo, compose_content
+from branding import CONTENT_MARGIN_X, add_branding, compose_content
 
 
 def render_frame(row, number, total, title, settings, reveal=False, countdown=None):
@@ -18,8 +18,6 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     content_left, content_right = CONTENT_MARGIN_X, image.width - CONTENT_MARGIN_X
     background = image
     image = Image.new("RGBA", background.size)
-    if settings.watermark_enabled:
-        add_logo(image, watermark=True, logo_image=settings.logo_image)
     draw = ImageDraw.Draw(image, "RGBA")
 
     def centered(text, rectangle, size, color=ink, bold=True, stroke=0):
@@ -96,5 +94,5 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     if settings.watermark_enabled and settings.brand.strip():
         draw.rounded_rectangle((content_left, 1420, content_right, 1470), 20, fill=(255, 255, 255, 225))
         centered(settings.brand, (content_left+30, 1428, content_right-30, 1462), 27, "#526d83")
-    add_logo(image, settings=settings)
+    add_branding(image, settings)
     return compose_content(background, image, settings)
