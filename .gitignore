@@ -27,3 +27,7 @@ release-tabs/
 release-outro/
 release-corners/
 build-tabs/
+build-prep/
+release-prep/
+release-prep-english/
+.voicestudio-runtime/

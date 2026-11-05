@@ -89,7 +89,8 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
         draw.text((content_left+118, 1244), str(countdown), font=font(65, True), anchor="mm", fill="#bf6515")
         draw.text((content_left+207, 1201), "BẠN CHỌN ĐÁP ÁN NÀO?", font=font(34, True), fill=ink)
         draw.rounded_rectangle((content_left+207, 1268, content_right-75, 1284), 8, fill="#dfeaf5")
-        fraction = max(0, min(1, countdown / max(1, settings.countdown)))
+        from content_timeline import thinking_seconds
+        fraction = max(0, min(1, countdown / max(1, thinking_seconds(row, settings))))
         if fraction:
             draw.rounded_rectangle((content_left+207, 1268, content_left+207+(content_right-content_left-282)*fraction, 1284), 8, fill=blue)
     if settings.watermark_enabled and settings.brand.strip():

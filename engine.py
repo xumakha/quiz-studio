@@ -9,14 +9,18 @@ import tempfile
 import threading
 import hashlib
 import shutil
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import edge_tts
 import edge_tts.communicate
 import imageio_ffmpeg
+from aiohttp import ClientError
+from edge_tts.exceptions import EdgeTTSException, NoAudioReceived
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from gtts import gTTS
+from gtts.tts import gTTSError
+from requests.exceptions import RequestException
 from content_timeline import DEFAULT_ENDING_TEXT
 
 # Retain certificate verification and additionally trust the OS certificate store
@@ -107,6 +111,7 @@ class Settings:
     background_overlay: bool = False
     music: str = ""
     music_volume: float = 0.12
+    voice_studio: dict = field(default_factory=dict)
 
 
 def font(size, bold=False):
@@ -173,6 +178,10 @@ class Cancelled(Exception):
     pass
 
 
+class SpeechError(RuntimeError):
+    """A speech service failed after bounded retries using the selected voice."""
+
+
 class Renderer:
     def __init__(self, settings, log=lambda message: None, cancel=None, progress=lambda percent, message: None):
         self.settings = settings
@@ -201,7 +210,72 @@ class Renderer:
             raise RuntimeError(stderr.decode("utf-8", errors="replace")[-2500:])
         return stderr.decode("utf-8", errors="replace")
 
+    async def _synthesize_speech(self, text, voice, path):
+        for attempt in range(1, 4):
+            self.check()
+            # A failed request can leave partial audio. Each attempt starts fresh.
+            path.unlink(missing_ok=True)
+            try:
+                if voice.startswith("google:"):
+                    await asyncio.to_thread(gTTS(text, lang=voice.split(":")[1],
+                                                pre_processor_funcs=[], timeout=(15, 45)).save, str(path))
+                else:
+                    # Communicate streams are single-use, including failed streams.
+                    await edge_tts.Communicate(text, voice, rate=f"{self.settings.rate:+d}%",
+                                              pitch=f"{self.settings.pitch:+d}Hz", connect_timeout=15,
+                                              receive_timeout=45).save(str(path))
+                self.check()
+                if not path.is_file() or not path.stat().st_size:
+                    raise NoAudioReceived("Dịch vụ không trả về âm thanh.")
+                return
+            except (EdgeTTSException, ClientError, TimeoutError, gTTSError, RequestException) as error:
+                path.unlink(missing_ok=True)
+                self.check()
+                label = next((name for name, value in VOICES.items() if value == voice), voice)
+                if attempt == 3:
+                    reason = ("Dịch vụ không trả về âm thanh." if isinstance(error, NoAudioReceived)
+                              else "Không nhận được âm thanh từ dịch vụ; kết nối có thể đang gián đoạn.")
+                    raise SpeechError(f"Không tạo được giọng {label} ({voice}) (TTS) sau 3 lần thử. "
+                                      + reason) from error
+                self.log(f"Giọng {label} chưa trả về âm thanh; đang thử lại ({attempt + 1}/3)…")
+                await asyncio.to_thread(self.cancel.wait, 0.5 * attempt)
+                self.check()
+
+    async def _voice_studio_part(self, text, role, path):
+        from voice_studio import VoiceStudioClient, VoiceStudioError
+        config = self.settings.voice_studio
+        client = VoiceStudioClient(config, check=self.check)
+        voice_key = {"main": "main_voice", "english": "english_voice",
+                     "dialogue_a": "dialogue_a", "dialogue_b": "dialogue_b"}[role]
+        language = config["main_language"] if role == "main" else "en"
+        remaining, chunks = text.strip(), []
+        while remaining:
+            split = len(remaining)
+            if split > 3500:
+                split = max(remaining.rfind(". ", 0, 3500), remaining.rfind(" ", 0, 3500))
+                split = split + 1 if split > 0 else 3500
+            chunks.append(remaining[:split])
+            remaining = remaining[split:].lstrip()
+        inputs = []
+        try:
+            for index, chunk in enumerate(chunks):
+                self.check()
+                self.log(f"VoiceStudio · {config['engine']} · đang tạo giọng {role} ({index + 1}/{len(chunks)})…")
+                raw = path.with_name(f"{path.stem}-raw-{index}.wav")
+                await asyncio.to_thread(client.synthesize, chunk, config[voice_key], language, raw,
+                                        speed=1 + self.settings.rate / 100)
+                self.check()
+                inputs.extend(["-i", raw])
+            factor = 2 ** (self.settings.pitch / 100)
+            streams = "".join(f"[{index}:a]" for index in range(len(chunks)))
+            filters = (f"{streams}concat=n={len(chunks)}:v=0:a=1,aresample=44100,"
+                       f"asetrate={44100 * factor:.3f},aresample=44100,atempo={1 / factor:.6f}[out]")
+            self.run([*inputs, "-filter_complex", filters, "-map", "[out]", "-ar", "44100", "-ac", "2", path])
+        except VoiceStudioError as error:
+            raise SpeechError(f"VoiceStudio (TTS): {error}") from error
+
     async def speech(self, text, target, directory, on_part=lambda fraction: None):
+        self.check()
         # Blanks belong to the picture, never to either speech provider. Clean
         # before hashing as well so previously cached spoken blanks are bypassed.
         text = re.sub(r"\s+", " ", re.sub(r"_+", " ", text)).strip()
@@ -213,10 +287,15 @@ class Renderer:
             on_part(1)
             return
         from preferences import BackgroundStore
+        from video_language import english_video
+        english_layout = english_video(self.settings)
         cache = BackgroundStore().directory / "tts-cache"
         cache.mkdir(parents=True, exist_ok=True)
-        key = hashlib.sha256(json.dumps([text, self.settings.voice, self.settings.english_voice,
-                                        self.settings.rate, self.settings.pitch], ensure_ascii=False).encode("utf-8")).hexdigest()
+        # Version the processed cache: old WAVs have no playback pre-roll.
+        identity = ["speech-preroll-v1", english_layout, text, self.settings.voice, self.settings.english_voice, self.settings.rate, self.settings.pitch]
+        if self.settings.voice_studio.get("enabled"):
+            identity.append(self.settings.voice_studio)
+        key = hashlib.sha256(json.dumps(identity, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
         cached = cache / f"{key}.wav"
         if cached.exists():
             self.check()
@@ -230,10 +309,16 @@ class Renderer:
             self.check()
             if not re.search(r"\w", plain(part)):
                 continue
-            voice = self.settings.english_voice if part.lower().startswith("[en]") else self.settings.voice
-            path = directory / f"speech-{target.stem}-{index}.mp3"
-            if voice.startswith("google:"):
-                await asyncio.to_thread(gTTS(plain(part), lang=voice.split(":")[1], pre_processor_funcs=[], timeout=(15, 45)).save, str(path))
+            voice = self.settings.english_voice if english_layout or part.lower().startswith("[en]") else self.settings.voice
+            studio = self.settings.voice_studio.get("enabled")
+            path = directory / f"speech-{target.stem}-{index}{'.wav' if studio else '.mp3'}"
+            if studio:
+                role = voice.split(":", 1)[1] if voice.startswith("voicestudio:") else (
+                    "english" if english_layout or part.lower().startswith("[en]") else "main")
+                await self._voice_studio_part(plain(part), role, path)
+            else:
+                await self._synthesize_speech(plain(part), voice, path)
+            if not studio and voice.startswith("google:"):
                 adjusted = path.with_suffix(".wav")
                 # Pitch is mapped from the UI range to +/- 6 semitones for Google;
                 # atempo compensates pitch-induced speed before applying rate.
@@ -249,8 +334,6 @@ class Renderer:
                 filters.append(f"atempo={speed:.6f}")
                 self.run(["-i", path, "-af", ",".join(filters), adjusted])
                 path = adjusted
-            else:
-                await edge_tts.Communicate(plain(part), voice, rate=f"{self.settings.rate:+d}%", pitch=f"{self.settings.pitch:+d}Hz", connect_timeout=15, receive_timeout=45).save(str(path))
             files.append(path)
             on_part((index + 1) / len(parts))
         if not files:
@@ -258,8 +341,11 @@ class Renderer:
         args = []
         for path in files:
             args.extend(["-i", path])
-        inputs = "".join(f"[{i}:a]" for i in range(len(files)))
-        self.run([*args, "-filter_complex", f"{inputs}concat=n={len(files)}:v=0:a=1[out]", "-map", "[out]", "-ar", "44100", "-ac", "2", target])
+        # Reset each provider stream's timestamps before concatenation. Keep all
+        # original samples and give audio devices 250 ms to open before speech.
+        streams = ";".join(f"[{i}:a]aresample=44100,asetpts=PTS-STARTPTS[p{i}]" for i in range(len(files)))
+        inputs = "".join(f"[p{i}]" for i in range(len(files)))
+        self.run([*args, "-filter_complex", f"{streams};{inputs}concat=n={len(files)}:v=0:a=1,adelay=250:all=1[out]", "-map", "[out]", "-ar", "44100", "-ac", "2", target])
         staging = cache / f"{key}-{os.getpid()}-{threading.get_ident()}.tmp"
         try:
             shutil.copyfile(target, staging)

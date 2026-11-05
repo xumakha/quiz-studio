@@ -99,7 +99,8 @@ class AppBackgroundTests(unittest.TestCase):
                 chosen["rate"] = 26
                 host.after(450, host.quit)
                 host.mainloop()
-                self.assertEqual(UserSettingsStore(root / "data").load()["rate"], 26)
+                self.assertEqual(UserSettingsStore(root / "data", config_dir=app.user_store.config.parent)
+                                 .load()["rate"], 26)
             finally:
                 host.close()
             source.unlink()

@@ -5,6 +5,7 @@ import threading
 import time
 import tkinter as tk
 import unittest
+import wave
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,6 +14,7 @@ from PIL import Image
 from app import App
 from content_types import sample_document
 from engine import Cancelled, Renderer
+from preferences import USER_DEFAULTS, UserSettingsStore
 
 
 class WorkspaceTabTests(unittest.TestCase):
@@ -49,6 +51,116 @@ class WorkspaceTabTests(unittest.TestCase):
         path = self.root / name
         Image.new("RGBA", (80, 120), color).save(path)
         return path
+
+    def reopen(self):
+        self.host.close()
+        self.host = App(data_dir=self.root / "data")
+        self.host.withdraw()
+
+    def test_three_default_tabs_restore_all_settings_and_media_independently(self):
+        self.assertEqual([tab.profile_id for tab in self.host.tabs],
+                         ["mot-chut-english", "easy-prep", "asvab-prep"])
+        self.assertEqual([tab.tab_name for tab in self.host.tabs],
+                         ["Một chút English", "Easy Prep", "ASVAB-Prep"])
+        self.assertIs(self.host.active_tab, self.host.tabs[0])
+        snapshots = {}
+        sources = []
+        for index, tab in enumerate(self.host.tabs):
+            # The second and third tabs are edited without selecting them.
+            chosen = {
+                "voice": "English • Male — Guy", "en_voice": "English • Google (HTTP)",
+                "dialogue_voice_a": "English • Male — Guy",
+                "dialogue_voice_b": "English • Female — Jenny",
+                "rate": 11 + index, "pitch": -10 + index, "countdown": 4 + index,
+                "resolution": "720 × 1280", "video_template": "Tiếng Anh · Xanh sáng",
+                "brand": f"Brand {index}", "watermark_enabled": index == 1,
+                "read_options": index != 1, "read_explanation": index == 2,
+                "speech": False, "music_volume": 20 + index, "reveal": index == 1,
+                "ending_text": f"Câu kết riêng {index}",
+                "left_logo_enabled": index == 0, "right_chibi_enabled": index == 2,
+            }
+            self.assertEqual(set(chosen), set(USER_DEFAULTS))
+            for name, value in chosen.items():
+                getattr(tab, name).set(value)
+            tab.background_dim.set(15 + index)
+            picture = self.image(f"Profile {index}.png", ("red", "green", "blue")[index])
+            music = self.root / f"Music {index}.wav"
+            with wave.open(str(music), "wb") as stream:
+                stream.setparams((1, 2, 8000, 0, "NONE", "not compressed"))
+                stream.writeframes(bytes([index, 0]) * 8000)
+            sources.extend((picture, music))
+            with patch("app.filedialog.askopenfilename", return_value=str(picture)):
+                tab.choose_media("background")
+                for kind in tab.branding_store.KINDS:
+                    tab.choose_branding(kind)
+            with patch("app.filedialog.askopenfilename", return_value=str(music)):
+                tab.choose_media("music")
+            # Schedule one last debounced save after music's immediate save.
+            tab.rate.set(31 + index)
+            snapshots[tab.profile_id] = (tab.user_settings(), tab.settings())
+
+        self.pump_until(lambda: all(tab.settings_save_timer is None and tab.dim_save_timer is None
+                                    for tab in self.host.tabs))
+        for tab in self.host.tabs:
+            saved = UserSettingsStore(self.root / "data", config_dir=tab.user_store.config.parent).load()
+            for name, value in snapshots[tab.profile_id][0].items():
+                self.assertEqual(saved[name], value, (tab.profile_id, name))
+        self.assertEqual(len({tab.user_store.config for tab in self.host.tabs}), 3)
+        for source in sources:
+            source.unlink()
+        self.host.select_tab(self.host.tabs[-1])
+        self.reopen()
+        for tab in self.host.tabs:
+            self.assertEqual(tab.user_settings(), snapshots[tab.profile_id][0])
+            self.assertEqual(tab.settings(), snapshots[tab.profile_id][1])
+            for name in ("background", "music", *tab.branding_store.KINDS):
+                self.assertTrue(Path(getattr(tab, name)).is_file(), (tab.profile_id, name))
+
+        # Clearing one profile must not overwrite either neighbor on exit.
+        second = self.host.tabs[1]
+        second.clear_media()
+        second.reset_branding("ending_image")
+        self.host.select_tab(second)
+        self.reopen()
+        self.assertEqual(self.host.tabs[1].background, "")
+        self.assertEqual(self.host.tabs[1].music, "")
+        self.assertEqual(self.host.tabs[1].ending_image, "")
+        for tab in (self.host.tabs[0], self.host.tabs[2]):
+            self.assertEqual(tab.settings(), snapshots[tab.profile_id][1])
+        self.errors.assert_not_called()
+
+    def test_renamed_default_and_extra_profiles_keep_identity_after_restart(self):
+        first = self.host.active_tab
+        first.countdown.set(8)
+        first.ending_text.set("Câu kết gốc")
+        extra = self.host.new_tab()
+        self.assertEqual(extra.settings(), first.settings())
+        self.assertNotEqual(extra.profile_id, first.profile_id)
+        self.assertNotEqual(extra.user_store.config, first.user_store.config)
+        extra.countdown.set(12)
+        extra.ending_text.set("Câu kết tab thêm")
+        for tab in (first, extra):
+            self.assertTrue(self.host.rename_tab(tab, "Tên trùng nhau"))
+        extra_id = extra.profile_id
+        first_id = first.profile_id
+        self.host.close_tab(first, confirm=False)
+        self.assertNotIn(first, self.host.tabs)
+        self.reopen()
+        self.assertEqual(len(self.host.tabs), 4)
+        self.assertEqual(self.host.tabs[0].profile_id, first_id)
+        self.assertEqual(self.host.tabs[0].tab_name, "Tên trùng nhau")
+        self.assertEqual(self.host.tabs[0].countdown.get(), 8)
+        self.assertEqual(self.host.tabs[0].ending_text.get(), "Câu kết gốc")
+        extra = next(tab for tab in self.host.tabs if tab.profile_id == extra_id)
+        self.assertEqual(extra.tab_name, "Tên trùng nhau")
+        self.assertEqual(extra.countdown.get(), 12)
+        self.assertEqual(extra.ending_text.get(), "Câu kết tab thêm")
+        self.host.close_tab(extra, confirm=False)
+        self.reopen()
+        self.assertEqual(len(self.host.tabs), 3)
+        self.assertNotIn(extra_id, [tab.profile_id for tab in self.host.tabs])
+        self.assertEqual(self.host.tabs[0].countdown.get(), 8)
+        self.errors.assert_not_called()
 
     def test_rename_tab_updates_caption_and_window_without_touching_content(self):
         first = self.host.active_tab

@@ -16,6 +16,24 @@ def ipa_font(size):
 
 def render_ending(settings):
     from pathlib import Path
+    from prep_themes import PALETTES
+    palette = PALETTES.get(settings.template)
+    if palette and not settings.ending_image:
+        from engine import fitted
+        image = Image.new("RGB", (1080, 1920), palette["background"])
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle((80, 620, 1000, 1160), 24, fill=palette["panel"])
+        draw.rectangle((80, 620, 1000, 632), fill=palette["accent"])
+        for value, top, height, size, color in (
+                (settings.brand.strip() or palette["heading"], 666, 100, 48, palette["accent"]),
+                ("PRACTICE COMPLETE", 810, 170, 64, palette["ink"]),
+                ("Review your answers · Prepare for test day", 1030, 80, 34, palette["muted"])):
+            face, lines, step = fitted(draw, value, size, 824, height, True)
+            y = top + (height-len(lines)*step)/2
+            for line in lines:
+                draw.text((540, y), line, font=face, anchor="mt", fill=color)
+                y += step
+        return image.resize((settings.width, settings.height), Image.Resampling.LANCZOS)
     with Image.open(settings.ending_image or Path(__file__).resolve().parent / "assets" / "ending-img.png") as source:
         artwork = ImageOps.exif_transpose(source).convert("RGB")
         return ImageOps.pad(artwork, (settings.width, settings.height), method=Image.Resampling.LANCZOS,
@@ -28,7 +46,10 @@ def render_scene(row, scene, number, total, title, settings):
     if row.get("type", "multiple_choice") == "multiple_choice":
         from video_themes import render_frame
         return render_frame(row, number, total, title, settings, scene.phase == "answer", scene.countdown)
-    image = Image.new("RGB", (1080, 1920), "#e6f1f8")
+    from video_themes import detect_template
+    from prep_themes import PALETTES
+    palette = PALETTES.get(detect_template(row, title, settings.template))
+    image = Image.new("RGB", (1080, 1920), palette["background"] if palette else "#e6f1f8")
     if settings.background and not settings.background_overlay:
         with open_background(settings.background) as source:
             image = ImageOps.fit(ImageOps.exif_transpose(source).convert("RGB"), image.size)
@@ -40,6 +61,10 @@ def render_scene(row, scene, number, total, title, settings):
     draw = ImageDraw.Draw(image)
     margin = CONTENT_MARGIN_X
     def block(text, y, height, size=58, color="#112c50", background=None, highlight=None, field="nội dung", left=margin, right=1080-margin, align="center", bold=True):
+        if palette:
+            color = {"#112c50": palette["ink"], "#665125": palette["ink"], "#58758c": palette["muted"], "#1267b1": palette["accent"]}.get(color, color)
+            if background:
+                background = palette["soft"] if background == "#ffdf7d" else palette["panel"]
         if not plain(text).strip():
             return
         if background:
@@ -84,12 +109,16 @@ def render_scene(row, scene, number, total, title, settings):
             cursor = max(cursor, offset+len(line))
             top += step
     kind = row["type"]
+    from video_language import CONTENT_LABELS_EN, COPY_EN
+    content_label = CONTENT_LABELS_EN[kind] if palette else LABELS[kind]
     draw.rounded_rectangle((margin, 178, 754, 238), radius=13, fill=(255, 255, 255, 220))
-    draw.text((margin+20, 208), LABELS[kind].upper(), font=font(30, True), anchor="lm", fill="#42637f")
+    draw.text((margin+20, 208), content_label.upper(), font=font(30, True), anchor="lm", fill=palette["accent"] if palette else "#42637f")
     draw.rounded_rectangle((787, 178, 1080-margin, 238), radius=13, fill=(255, 255, 255, 220))
     draw.text((893, 208), f"{number:02d} / {total:02d}", font=font(31, True), anchor="mm", fill="#42637f")
     block(title, 260, 130, 52, color="#665125", background="#ffdf7d", field="tiêu đề")
     heading = "" if kind == "guess_word" else scene.label
+    if palette and heading != row.get("prompt"):
+        heading = COPY_EN.get(heading, heading)
     heading_height = min(260, max(90, len(wrap(draw, heading, font(32, True), 864))*44+32))
     block(heading, 418, heading_height, 32, color="#58758c", field="hướng dẫn")
     content_top = max(530, 418 + heading_height + 22)
@@ -118,7 +147,7 @@ def render_scene(row, scene, number, total, title, settings):
                 raise ValueError(f"Câu {number}: IPA quá dài để hiển thị rõ.")
             draw.text((540, 1015 if row.get("context_hint", "").strip() else 915), ipa, font=face, anchor="mt", fill="#42637f")
         if scene.phase == "question":
-            block("Chuẩn bị", 1160, 110, 48)
+            block("Get ready" if palette else "Chuẩn bị", 1160, 110, 48)
         elif scene.phase in ("explanation", "example"):
             block(scene.detail, 1080 if row.get("context_hint", "").strip() else 1040, 260 if row.get("context_hint", "").strip() else 300, 42, background="#fff8df", field="giải thích / ví dụ", bold=False)
     elif kind == "dialogue":
@@ -155,12 +184,13 @@ def render_scene(row, scene, number, total, title, settings):
     if kind != "guess_word" and scene.phase == "answer" and row.get("explanation"):
         block(row["explanation"], 1190, 210, 40, background="#fff8df", field="giải thích", bold=False)
     if scene.countdown is not None:
-        block(f"{scene.countdown} giây", 1160, 160, 64, background="#ffdf7d")
+        block(f"{scene.countdown} {'seconds' if palette else 'giây'}", 1160, 160, 64, background="#ffdf7d")
         draw.rounded_rectangle((margin+30, 1344, 1050-margin, 1356), radius=6, fill="#c9dce9")
-        seconds = row.get("thinking_seconds", row.get("_default_thinking_seconds", settings.countdown))
+        from content_timeline import thinking_seconds
+        seconds = thinking_seconds(row, settings)
         fraction = min(1, max(0, scene.countdown/max(1, seconds)))
         if fraction:
-            draw.rounded_rectangle((margin+30, 1344, margin+30+(920-60)*fraction, 1356), radius=6, fill="#3887bb")
+            draw.rounded_rectangle((margin+30, 1344, margin+30+(1080-2*margin-60)*fraction, 1356), radius=6, fill=palette["accent"] if palette else "#3887bb")
     if settings.watermark_enabled:
         block(settings.brand, 1400, 76, 30)
     add_logo(image, settings=settings)

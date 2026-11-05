@@ -74,8 +74,17 @@ def build_ui(app, saved):
     ctk.CTkLabel(header,text="",image=icon("audio","white",24),width=40,height=40,fg_color=ACCENT,corner_radius=10).pack(side="left",padx=(28,12))
     identity = box(header)
     identity.pack(side="left")
-    label(identity, "Quiz Studio", 20, bold=True).pack(anchor="w")
-    label(identity, "Không gian sáng tạo video trắc nghiệm", 10, MUTED).pack(anchor="w")
+    label(identity, app.tab_name, 20, bold=True).pack(anchor="w")
+    workspace_caption = label(identity, "", 10, MUTED)
+    workspace_caption.pack(anchor="w")
+    def update_workspace_caption(*args):
+        theme = TEMPLATES[app.video_template.get()]
+        workspace_caption.configure(text={"exam": "Exam & certification practice · Test your knowledge",
+            "military": "ASVAB & military preparation · Train for test day",
+            "tech": "Computing & technology · Certification practice",
+            "english": "Một chút English · Học ngôn ngữ mỗi ngày"}.get(theme, "Không gian sáng tạo video trắc nghiệm"))
+    app.video_template.trace_add("write", update_workspace_caption)
+    update_workspace_caption()
     label(header, "DESKTOP", 9, MUTED, fg_color=BG, corner_radius=4, width=68, height=22).pack(side="left", padx=16)
     breadcrumb = box(header)
     breadcrumb.pack(side="left", padx=20)
@@ -140,6 +149,11 @@ def build_ui(app, saved):
         return inner
     voice, background, video = tab("Giọng đọc"), tab("Nền"), tab("Video")
     section(voice, "Giọng đọc & ngôn ngữ")
+    button(voice, "VoiceStudio…", app.open_voice_studio, symbol="settings", primary=True).pack(fill="x", pady=(4, 8))
+    app.voice_studio_summary = label(voice, (
+        f"Đang dùng VoiceStudio · {app.voice_studio_config['engine']}" if app.voice_studio_config["enabled"]
+        else "Đang dùng giọng Google / Edge"), 10, MUTED, wraplength=220)
+    app.voice_studio_summary.pack(anchor="w", pady=(0, 6))
     combo(voice, "Giọng đọc chính", app.voice, list(VOICES))
     combo(voice, "Giọng cho đoạn tiếng Anh", app.en_voice, [k for k,v in VOICES.items() if v.startswith("en") or v=="google:en"])
     english_voices = [k for k, v in VOICES.items() if v.startswith("en") or v == "google:en"]
@@ -165,6 +179,7 @@ def build_ui(app, saved):
     divider(voice)
     section(voice, "Thời gian câu hỏi")
     slider(voice, "Thời gian suy nghĩ", app.countdown, 1, 30, "s")
+    label(voice, "Nếu JSON có thinking_seconds, thời gian trong JSON được ưu tiên (từng câu → toàn bài → thanh này).", 10, MUTED, wraplength=220, justify="left").pack(anchor="w", pady=5)
     section(background, "Ảnh / video nền")
     upload = box(background, BG, border_width=1, border_color=LINE, corner_radius=8)
     upload.pack(fill="x", pady=10)
@@ -339,4 +354,5 @@ def build_ui(app, saved):
     app.background_dim.trace_add("write", app.background_dim_changed)
     app.brand.trace_add("write", lambda *args: app.show_preview())
     app.video_template.trace_add("write", lambda *args: app.show_preview())
+    app.countdown.trace_add("write", lambda *args: app.show_preview())
     app.update_watermark()

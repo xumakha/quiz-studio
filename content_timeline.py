@@ -1,6 +1,7 @@
 """Shared deterministic scene plan for preview and FFmpeg export."""
 from dataclasses import dataclass, replace
 from content_types import REGISTRY, en, plain
+from video_language import english_video, generated_copy
 
 DEFAULT_ENDING_TEXT = "theo dõi một chút english để học thêm một chút tiếng anh mỗi ngày nhé!"
 
@@ -106,7 +107,7 @@ def multiple_choice(row, settings):
     if settings.read_options:
         question += ". " + ". ".join(f"{chr(65+i)}. {x}" for i, x in enumerate(row["options"]))
     answer = f"Đáp án đúng là {chr(65 + row['answer_index'])}."
-    if settings.voice.startswith("en") or settings.voice == "google:en":
+    if english_video(settings) or settings.voice.startswith("en") or settings.voice == "google:en":
         answer = f"The answer is {chr(65 + row['answer_index'])}."
     return [Scene("question", row["question"], question), Scene("answer", row["options"][row["answer_index"]], answer)]
 
@@ -163,8 +164,12 @@ def dialogue(row, settings):
 
 def true_false(row, settings):
     answer = "ĐÚNG (+)" if row["answer"] else "SAI (X)"
+    spoken = "Đúng." if row["answer"] else "Sai."
+    if english_video(settings):
+        answer = "TRUE (+)" if row["answer"] else "FALSE (X)"
+        spoken = "True." if row["answer"] else "False."
     return [Scene("question", row["statement"], row["statement"], "Đúng hay sai?"),
-            Scene("answer", answer, ("Đúng." if row["answer"] else "Sai.") + " " + row.get("correction", ""), "Đáp án", detail=row.get("correction", ""))]
+            Scene("answer", answer, spoken + " " + row.get("correction", ""), "Đáp án", detail=row.get("correction", ""))]
 
 
 def multiple_meanings(row, settings):
@@ -186,7 +191,9 @@ def phrase_lesson(row, settings):
 def guess_word(row, settings):
     from content_types import masked_word
     question = ". ".join(filter(None, [row["meaning_vi"], row.get("context_hint", "")]))
-    voice = settings.english_voice if settings.english_voice.startswith("en-US-") else "en-US-JennyNeural"
+    voice = (settings.english_voice
+             if settings.voice_studio.get("enabled") or settings.english_voice == "google:en" or settings.english_voice.startswith("en-US-")
+             else "en-US-JennyNeural")
     scenes = [Scene("question", masked_word(row["answer"]), question, "Chuẩn bị"),
               Scene("answer", row["answer"].upper(), "", "Đáp án", detail=row.get("ipa", ""), trailing_silence=1.0)]
     explanation = row["explanation"] if settings.read_explanation else ""
@@ -204,18 +211,35 @@ BUILDERS = {key: globals()[key] for key in REGISTRY}
 
 def ending_scene(settings=None):
     narration = DEFAULT_ENDING_TEXT if settings is None else settings.ending_text.strip()
+    if settings is not None and english_video(settings) and narration == DEFAULT_ENDING_TEXT:
+        narration = "Keep practicing and prepare for your next exam!"
     return Scene("ending", "", narration)
 
 
+def thinking_seconds(row, settings):
+    """An item override wins over JSON defaults, then the editor setting."""
+    return row.get("thinking_seconds", row.get("_default_thinking_seconds", settings.countdown))
+
+
 def plan_item(row, settings):
+    if settings.template == "auto":
+        from video_themes import detect_template
+        settings = replace(settings, template=detect_template(row))
     kind = row.get("type", "multiple_choice")
     scenes = BUILDERS[kind](row, settings)
+    if english_video(settings):
+        # Only translate generated copy, before applying an authored prompt.
+        scenes = [replace(scene,
+                          label=generated_copy(scene.label, settings) if kind != "multiple_meanings" else scene.label,
+                          text=generated_copy(scene.text, settings) if kind == "listening" and scene.phase == "question" else scene.text,
+                          narration=generated_copy(scene.narration, settings) if kind == "word_order" and scene.phase == "question" else scene.narration)
+                  for scene in scenes]
     if row.get("prompt"):
         parts = ((row["prompt"], None),) + scenes[0].speech_parts if scenes[0].speech_parts else ()
         scenes[0] = replace(scenes[0], label=row["prompt"], narration=row["prompt"] + ". " + scenes[0].narration, speech_parts=parts)
     if not REGISTRY[kind].lesson:
         split = next(i for i, scene in enumerate(scenes) if scene.phase != "question")
-        countdown = [Scene("countdown", scenes[split-1].text, "", scenes[split-1].label, n) for n in range(row.get("thinking_seconds", row.get("_default_thinking_seconds", settings.countdown)), 0, -1)]
+        countdown = [Scene("countdown", scenes[split-1].text, "", scenes[split-1].label, n) for n in range(thinking_seconds(row, settings), 0, -1)]
         scenes[split:split] = countdown
         if kind != "guess_word" and settings.read_explanation and row.get("explanation"):
             last = scenes[-1]

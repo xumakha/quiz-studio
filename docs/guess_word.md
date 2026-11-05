@@ -1,10 +1,12 @@
 # Đoán từ qua nghĩa tiếng Việt
 
-Bản mới hỗ trợ nhiều tab video: bấm **+** hoặc **Ctrl+T**, mỗi tab có nội dung và tác vụ xuất riêng. Trong **Tùy chỉnh video → Video**, dùng **Chọn ảnh logo** và **Chọn ảnh cuối video** để thay ảnh cho tab hiện tại; có nút khôi phục ảnh mặc định và xem trước ảnh kết thúc. Mở `Mo-QuizStudio.bat` để chạy bản mới tại `release-corners/QuizStudio/QuizStudio.exe`. Xem [hướng dẫn nhiều tab](../README.md#tạo-video).
+App mở sẵn ba tab **Một chút English**, **Easy Prep**, **ASVAB-Prep** và chọn tab đầu tiên. Giọng đọc, nền, nhạc, logo, ảnh kết thúc và các tùy chỉnh được lưu riêng cho từng tab, tự khôi phục khi mở lại app. Cài đặt từ bản cũ được giữ cho **Một chút English**; hai tab còn lại dùng thông số cơ bản, chữ watermark theo tên tab và câu kết để trống cho đến khi bạn tùy chỉnh.
 
-Nhấp đúp tên tab hoặc chuột phải → **Đổi tên tab…** để đổi tên. Logo và ảnh cuối video đều có danh sách **Ảnh đã tải lên** → **Dùng ảnh đã chọn** để dùng lại ảnh cũ; thư viện giữ ảnh ngay cả khi khôi phục mặc định hoặc xóa file gốc.
+Bấm **+** hoặc **Ctrl+T** để thêm tab; tab mới sao chép cài đặt tab đang chọn rồi lưu độc lập. Tên và các tab còn mở được nhớ cho lần sau. Đóng tab mặc định chỉ ẩn trong phiên hiện tại; mở lại app sẽ khôi phục cả ba với cài đặt đã lưu. Tab mở thêm đã đóng sẽ không tự mở lại. JSON và bản nháp vẫn chỉ giữ trong phiên, cần **Lưu JSON** để giữ nội dung. Mở `Mo-QuizStudio.bat` để chạy bản mới tại `release-corners/QuizStudio/QuizStudio.exe`. Xem [hướng dẫn nhiều tab](../README.md#tạo-video).
 
-Mục **Video → Câu kết cuối video** cho phép gõ lời đọc khi hiện ảnh kết thúc và **Nghe thử câu kết**. Bật **Tạo giọng đọc** để phát; để trống nếu chỉ muốn hiện ảnh. Câu kết được lưu riêng theo tab trong phiên và tự lưu cùng cài đặt.
+Nhấp đúp tên tab hoặc chuột phải → **Đổi tên tab…** để đổi tên; tên được lưu và bộ cài đặt của tab được giữ nguyên. Trong **Tùy chỉnh video → Video**, dùng **Chọn ảnh logo** và **Chọn ảnh cuối video** để thay ảnh cho tab hiện tại. Cả hai đều có danh sách **Ảnh đã tải lên** → **Dùng ảnh đã chọn** để dùng lại ảnh cũ; thư viện ảnh dùng chung vẫn giữ ảnh khi khôi phục mặc định hoặc xóa file gốc.
+
+Mục **Video → Câu kết cuối video** cho phép gõ lời đọc khi hiện ảnh kết thúc và **Nghe thử câu kết**. Bật **Tạo giọng đọc** để phát; để trống nếu chỉ muốn hiện ảnh. Câu kết được lưu riêng theo tab và khôi phục cùng cài đặt khi mở lại app.
 
 Mục **Video → Logo góc trái / Ảnh chibi góc phải** cho phép bật/tắt từng ảnh ở đầu video, tải ảnh thay thế hoặc chọn ảnh đã tải từ thư viện. Hai mục giữ ảnh, trạng thái riêng theo tab và tự lưu; logo chìm phía sau nội dung có lựa chọn riêng. Xem trước và xuất video dùng cùng cài đặt.
 
@@ -20,7 +22,9 @@ Dòng chú thích nhỏ ngay dưới nghĩa tiếng Việt lấy từ `context_h
 
 Đáp án chỉ nhận một từ A–Z, 2–20 chữ cái; khoảng trắng đầu/cuối được trim. Thẻ [en] chỉ dùng trong giải thích/ví dụ, không dùng trong answer. Mọi lỗi được báo theo câu; từ trùng và số câu trong tiêu đề không khớp được cảnh báo. Trình độ đọc từ JSON, không tự sinh hoặc random.
 
-Trường `ipa` là tùy chọn, chỉ hiển thị sau khi bật mí, ngay dưới đáp án (font Segoe UI, 48 px trên khung 1080 px; tự co tối đa đến 34 px). Không tự sinh IPA và không đọc IPA. Trong giải thích, đoạn có thẻ `[en]` dùng giọng `en-US` đã chọn; các giọng khác chuyển sang `en-US-JennyNeural`, phần tiếng Việt vẫn dùng giọng Việt đã chọn. Khoảng hiện đáp án im lặng 1 giây dùng chung trong preview, tua và xuất video; thời lượng được căn theo frame 30 fps.
+Trường `ipa` là tùy chọn, chỉ hiển thị sau khi bật mí, ngay dưới đáp án (font Segoe UI, 48 px trên khung 1080 px; tự co tối đa đến 34 px). Không tự sinh IPA và không đọc IPA. Trong giải thích, đoạn có thẻ `[en]` dùng Google English hoặc giọng `en-US` đã chọn; các giọng vùng khác chuyển sang `en-US-JennyNeural`, phần tiếng Việt vẫn dùng giọng Việt đã chọn. Khoảng hiện đáp án im lặng 1 giây dùng chung trong preview, tua và xuất video; thời lượng được căn theo frame 30 fps.
+
+Nếu dịch vụ giọng đọc không trả âm thanh, app tự thử tối đa 3 lần với cùng giọng. Khi vẫn thất bại, thông báo nêu rõ giọng bị lỗi; có thể chọn Google Việt/Anh tương ứng trong tab Giọng đọc rồi nghe thử lại.
 
 Đã kiểm tra font IPA, thời điểm bật mí, trường hợp thiếu IPA và việc không gửi IPA vào TTS. Bản kiểm tra mới `outputs/guess-word-ipa-check.mp4` bỏ hoàn toàn audio ở bước hiện đáp án; mốc chi tiết nằm trong `outputs/guess-word-ipa-timeline.json`. Chưa nghe đánh giá thủ công chất lượng phát âm.
 

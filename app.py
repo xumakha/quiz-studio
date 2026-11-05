@@ -16,7 +16,9 @@ from tkinter import filedialog, messagebox, simpledialog, ttk
 from PIL import ImageTk
 from engine import Cancelled, Renderer, Settings, VOICES, frame, parse_questions
 from preferences import BackgroundStore, BrandingStore, UserSettingsStore, USER_DEFAULTS
+from workspace_profiles import WorkspaceProfiles
 from video_themes import TEMPLATES, video_template
+from voice_studio import VoiceStudioStore
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 
@@ -24,11 +26,12 @@ ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 class VideoTab(tk.Frame):
     """An independent editor, preview and render job within the main window."""
 
-    def __init__(self, host, number, data_dir=None):
+    def __init__(self, host, number, profile, config_dir):
         super().__init__(host.workspace)
         self.host = host
         self.number = number
-        self.tab_name = f"Video {number}"
+        self.profile_id = profile["id"]
+        self.tab_name = profile["name"]
         self._timers = set()
         self.disposed = False
         self.closing = False
@@ -40,17 +43,20 @@ class VideoTab(tk.Frame):
         self.cancel = threading.Event()
         self.busy = False
         self.rows = []
-        self.background_store = BackgroundStore(data_dir)
+        self.background_store = BackgroundStore(host.data_dir, config_dir=config_dir)
         saved_background = self.background_store.load()
         self.background = saved_background["background"]
         self.background_name = saved_background["background_name"]
         self.dim_save_timer = None
         self.settings_save_timer = None
-        self.user_store = UserSettingsStore(self.background_store.directory)
+        self.user_store = UserSettingsStore(self.background_store.directory, config_dir=config_dir)
+        self.voice_studio_store = VoiceStudioStore(config_dir)
+        self.voice_studio_config = self.voice_studio_store.load()
+        self.voice_studio_window = None
         saved_settings = self.user_store.load()
         self.music = saved_settings["music"]
         self.music_name = saved_settings["music_name"]
-        self.branding_store = BrandingStore(self.background_store.directory)
+        self.branding_store = BrandingStore(self.background_store.directory, config_dir=config_dir)
         for name, value in self.branding_store.load().items():
             setattr(self, name, value)
         self.last_output = None
@@ -62,7 +68,8 @@ class VideoTab(tk.Frame):
         self.text.insert("1.0", (ROOT / "examples/questions.json").read_text(encoding="utf-8"))
         self.validate()
         self.mark_clean()
-        warnings = [store.warning for store in (self.background_store, self.user_store, self.branding_store) if store.warning]
+        warnings = [store.warning for store in (self.background_store, self.user_store, self.branding_store,
+                                                self.voice_studio_store) if store.warning]
         if warnings:
             self.status.configure(text="\n".join(warnings))
         self.poll_timer = self.after(100, self.poll)
@@ -91,6 +98,9 @@ class VideoTab(tk.Frame):
         self.host.update_tab(self)
 
     def persist(self):
+        if self.voice_studio_window is not None and self.voice_studio_window.winfo_exists():
+            if not self.voice_studio_window.apply(False):
+                return False
         if self.dim_save_timer:
             self.after_cancel(self.dim_save_timer)
         if not self.save_background_dim():
@@ -99,10 +109,28 @@ class VideoTab(tk.Frame):
             self.after_cancel(self.settings_save_timer)
         try:
             self.branding_store.save()
+            self.voice_studio_store.save(self.voice_studio_config)
         except OSError as error:
             self.status.configure(text=f"Không lưu được ảnh: {error}")
             return False
         return self.save_user_settings()
+
+    def open_voice_studio(self):
+        if self.voice_studio_window is not None and self.voice_studio_window.winfo_exists():
+            self.voice_studio_window.deiconify()
+            self.voice_studio_window.lift()
+            self.voice_studio_window.focus_set()
+            return self.voice_studio_window
+        from voice_studio_ui import VoiceStudioWindow
+        self.voice_studio_window = VoiceStudioWindow(self)
+        return self.voice_studio_window
+
+    def apply_voice_studio(self, config):
+        saved = self.voice_studio_store.save(config)
+        self.voice_studio_config = saved
+        self.stop_preview()
+        self.voice_studio_summary.configure(text=(
+            f"Đang dùng VoiceStudio · {saved['engine']}" if saved["enabled"] else "Đang dùng giọng Google / Edge"))
 
     def move_question(self, direction):
         if self.rows:
@@ -166,7 +194,8 @@ class VideoTab(tk.Frame):
         ttk.Spinbox(parent, from_=low, to=high, textvariable=variable, width=27).pack(fill="x", padx=(0, 16))
 
     def settings(self):
-        if any(row.get("type") == "dialogue" for row in self.rows) and self.dialogue_voice_a.get() == self.dialogue_voice_b.get():
+        if (not self.voice_studio_config["enabled"] and any(row.get("type") == "dialogue" for row in self.rows)
+                and self.dialogue_voice_a.get() == self.dialogue_voice_b.get()):
             raise ValueError("Hội thoại: hãy chọn hai giọng khác nhau cho nhân vật A và B trong tab Giọng đọc.")
         rate, pitch, countdown, volume = self.rate.get(), self.pitch.get(), self.countdown.get(), self.music_volume.get()
         dim = self.background_dim.get()
@@ -175,16 +204,24 @@ class VideoTab(tk.Frame):
         if not 0 <= dim <= 70:
             raise ValueError("Mức làm tối nền phải từ 0 đến 70%.")
         width, height = (720, 1280) if self.resolution.get().startswith("720") else (1080, 1920)
+        from copy import deepcopy
+        config = deepcopy(self.voice_studio_config)
+        studio = config["enabled"]
+        if studio and any(row.get("type") == "dialogue" for row in self.rows) and config["dialogue_a"] == config["dialogue_b"]:
+            raise ValueError("VoiceStudio: hãy chọn hai giọng khác nhau cho A và B trong cửa sổ VoiceStudio.")
         return Settings(
-            voice=VOICES[self.voice.get()], english_voice=VOICES[self.en_voice.get()],
-            dialogue_voice_a=VOICES[self.dialogue_voice_a.get()], dialogue_voice_b=VOICES[self.dialogue_voice_b.get()],
+            voice=("google:en" if config["main_language"].startswith("en") else "google:vi") if studio else VOICES[self.voice.get()],
+            english_voice="voicestudio:english" if studio else VOICES[self.en_voice.get()],
+            dialogue_voice_a="voicestudio:dialogue_a" if studio else VOICES[self.dialogue_voice_a.get()],
+            dialogue_voice_b="voicestudio:dialogue_b" if studio else VOICES[self.dialogue_voice_b.get()],
             rate=rate, pitch=pitch, countdown=countdown, width=width, height=height,
             read_options=self.read_options.get(), read_explanation=self.read_explanation.get(), speech=self.speech.get(),
             brand=self.brand.get(), watermark_enabled=self.watermark_enabled.get(), template=TEMPLATES[self.video_template.get()],
             background=self.background, background_dim=dim, music=self.music, music_volume=volume / 100,
             logo_image=self.logo_image, ending_image=self.ending_image, ending_text=self.ending_text.get(),
             left_logo_image=self.left_logo_image, right_chibi_image=self.right_chibi_image,
-            left_logo_enabled=self.left_logo_enabled.get(), right_chibi_enabled=self.right_chibi_enabled.get())
+            left_logo_enabled=self.left_logo_enabled.get(), right_chibi_enabled=self.right_chibi_enabled.get(),
+            voice_studio=config)
 
     def validate(self):
         try:
@@ -228,8 +265,9 @@ class VideoTab(tk.Frame):
             settings.template = theme
             from background_media import is_video
             settings.background_overlay = bool(settings.background and is_video(settings.background))
-            self.template_label.configure(text={"math": "TOÁN · XANH BẠC HÀ", "english": "TIẾNG ANH · XANH SÁNG", "classic": "QUIZ · NHIỀU MÀU"}[theme])
-            picture = frame(self.rows[index], index + 1, len(self.rows), self.quiz_title, settings, reveal=self.reveal.get(), countdown=self.countdown.get())
+            self.template_label.configure(text=next(label.upper() for label, value in TEMPLATES.items() if value == theme))
+            from content_timeline import thinking_seconds
+            picture = frame(self.rows[index], index + 1, len(self.rows), self.quiz_title, settings, reveal=self.reveal.get(), countdown=thinking_seconds(self.rows[index], settings))
             picture.thumbnail((180, 220))
             self.preview_image = ImageTk.PhotoImage(picture)
             self.preview.configure(image=self.preview_image)
@@ -338,7 +376,7 @@ class VideoTab(tk.Frame):
         generation = self.preview_generation
         def prepare():
             directory = Path(tempfile.mkdtemp(prefix="quiz-preview-"))
-            renderer = Renderer(settings, cancel=cancel)
+            renderer = Renderer(settings, lambda text: self.events.put(("log", text)), cancel=cancel)
             try:
                 from content_renderer import validate_layout
                 if not ending_only:
@@ -652,7 +690,7 @@ class VideoTab(tk.Frame):
                 text = "Xin chào! Bạn đã sẵn sàng cho câu hỏi tiếp theo chưa? [en]Welcome to the quiz challenge![/en]"
                 if settings.voice.startswith("en") or settings.voice == "google:en":
                     text = "Welcome! Are you ready for the next question?"
-                renderer = Renderer(settings, cancel=self.cancel)
+                renderer = Renderer(settings, lambda text: self.events.put(("log", text)), cancel=self.cancel)
                 asyncio.run(renderer.speech(text, target, directory))
                 renderer.check()
                 self.audio_player.play(target, wait=True, cancel=self.cancel)
@@ -740,7 +778,10 @@ class VideoTab(tk.Frame):
                     self.job_state = {"done": "Xong", "cancel": "Đã hủy", "error": "Lỗi"}.get(kind, "")
                     self.host.update_tab(self)
                     if kind == "error" and not self.closing:
-                        guidance = "\n\nKiểm tra Internet rồi thử lại, hoặc bỏ chọn Tạo giọng đọc để xuất offline." if "(TTS)" in text else ""
+                        guidance = ("\n\nKiểm tra Internet rồi thử lại. Nếu giọng Edge tiếp tục lỗi, "
+                                    "vào Giọng đọc và chọn Việt • Google (HTTP) hoặc English • Google (HTTP) "
+                                    "cho đúng ngôn ngữ (kiểm tra cả giọng chính và giọng tiếng Anh). "
+                                    "Bạn cũng có thể bỏ chọn Tạo giọng đọc để xuất offline.") if "(TTS)" in text and "VoiceStudio" not in text else ""
                         messagebox.showerror("Tác vụ thất bại", text + guidance)
         except queue.Empty:
             pass
@@ -755,6 +796,8 @@ class VideoTab(tk.Frame):
         self.cancel.set()
         self.stop_preview()
         self.disposed = True
+        if self.voice_studio_window is not None and self.voice_studio_window.winfo_exists():
+            self.voice_studio_window.destroy()
         for timer in list(self._timers):
             self.after_cancel(timer)
         super().destroy()
@@ -769,7 +812,9 @@ class App(tk.Tk):
         self.geometry("1380x950")
         self.minsize(1100, 790)
         self.configure(bg="#edf2f4")
-        self.data_dir = data_dir
+        from platform_support import data_directory
+        self.data_dir = Path(data_dir) if data_dir is not None else data_directory()
+        self.profiles = WorkspaceProfiles(self.data_dir)
         self.tabs = []
         self.active_tab = None
         self.next_tab_number = 1
@@ -800,7 +845,13 @@ class App(tk.Tk):
             self.bind("<Command-t>", lambda event: self._shortcut(self.new_tab))
             self.bind("<Command-w>", lambda event: self._shortcut(lambda: self.close_tab(self.active_tab)))
         self.protocol("WM_DELETE_WINDOW", lambda: self.close(confirm=True))
-        self.new_tab()
+        profiles = self.profiles.load()
+        for profile in profiles:
+            self._add_tab(profile, activate=False)
+        self.select_tab(self.tabs[0])
+        if self.profiles.warning:
+            self.active_tab.status.configure(text=self.profiles.warning)
+        self.save_workspace()
 
     @staticmethod
     def _shortcut(action):
@@ -812,7 +863,28 @@ class App(tk.Tk):
             return None
         if self.active_tab and not self.active_tab.persist():
             return None
-        tab = VideoTab(self, self.next_tab_number, self.data_dir)
+        profile = self.profiles.new_record(self.next_tab_number)
+        try:
+            tab = self._add_tab(profile, source_id=self.active_tab.profile_id if self.active_tab else None)
+        except OSError as error:
+            messagebox.showerror("Không tạo được tab", str(error), parent=self)
+            return None
+        self.save_workspace()
+        return tab
+
+    def save_workspace(self, tabs=None):
+        records = [{"id": tab.profile_id, "name": tab.tab_name}
+                   for tab in (self.tabs if tabs is None else tabs) if not tab.closing]
+        try:
+            self.profiles.save(records)
+            return True
+        except (OSError, ValueError) as error:
+            messagebox.showerror("Không lưu được danh sách tab", str(error), parent=self)
+            return False
+
+    def _add_tab(self, profile, *, activate=True, source_id=None):
+        config_dir = self.profiles.prepare(profile, source_id=source_id)
+        tab = VideoTab(self, self.next_tab_number, profile, config_dir)
         self.next_tab_number += 1
         self.tabs.append(tab)
         holder = tk.Frame(self.tab_strip, bg="white", padx=1, pady=4)
@@ -834,7 +906,10 @@ class App(tk.Tk):
                           width=2, font=("Segoe UI", 13))
         close.pack(side="right", fill="y")
         self.tab_widgets[tab] = (holder, select, close)
-        self.select_tab(tab)
+        if activate:
+            self.select_tab(tab)
+        else:
+            self.update_tab(tab)
         return tab
 
     def update_tab(self, tab):
@@ -863,7 +938,11 @@ class App(tk.Tk):
         if not name or len(name) > 80:
             messagebox.showwarning("Tên tab không hợp lệ", "Tên tab cần có từ 1 đến 80 ký tự.", parent=self)
             return False
+        previous = tab.tab_name
         tab.tab_name = name
+        if not self.save_workspace():
+            tab.tab_name = previous
+            return False
         self.update_tab(tab)
         return True
 
@@ -927,6 +1006,8 @@ class App(tk.Tk):
                 return
         if not tab.persist():
             return
+        if not self.save_workspace([item for item in self.tabs if item is not tab]):
+            return
         tab.closing = True
         tab.cancel_job()
         self.update_tab(tab)
@@ -960,11 +1041,9 @@ class App(tk.Tk):
             if not messagebox.askyesno("Đóng Quiz Studio",
                     "Nội dung chưa lưu JSON sẽ mất và các tác vụ đang chạy sẽ bị hủy.\nĐóng tất cả tab?", parent=self):
                 return
-        # Save the selected tab last, so its settings become next launch's defaults.
-        ordered = [tab for tab in self.tabs if tab is not self.active_tab]
-        if self.active_tab:
-            ordered.append(self.active_tab)
-        if not all(tab.persist() for tab in ordered):
+        if not all(tab.persist() for tab in self.tabs):
+            return
+        if not self.save_workspace():
             return
         self.closing = True
         for tab in list(self.tabs):
@@ -992,6 +1071,8 @@ if __name__ == "__main__":
             host.withdraw()
             host.update_idletasks()
             app = host.active_tab
+            assert [tab.tab_name for tab in host.tabs] == ["Một chút English", "Easy Prep", "ASVAB-Prep"]
+            assert app is host.tabs[0]
             assert len(app.rows) == 2 and app.show_preview()
             from content_types import DEFAULT_MODE, REGISTRY, sample_document
             from content_timeline import plan_item
@@ -1024,11 +1105,24 @@ if __name__ == "__main__":
             assert second.events is not app.events and second.cancel is not app.cancel
             host.select_tab(app)
             host.close_tab(second, confirm=False)
-            assert host.active_tab is app and len(host.tabs) == 1
+            assert host.active_tab is app and len(host.tabs) == 3
             app.show_ending_preview()
+            for index, tab in enumerate(host.tabs):
+                tab.brand.set(f"PROFILE {index}")
+                tab.countdown.set(index + 3)
+            host.rename_tab(host.tabs[1], "Easy Prep đã lưu")
+            host.select_tab(host.tabs[2])
+            host.close()
+            host = App(data_dir=check_data.name)
+            host.withdraw()
+            assert len(host.tabs) == 3 and host.active_tab is host.tabs[0]
+            assert host.tabs[1].tab_name == "Easy Prep đã lưu"
+            for index, tab in enumerate(host.tabs):
+                assert tab.brand.get() == f"PROFILE {index}"
+                assert tab.countdown.get() == index + 3
             host.close()
             check_data.cleanup()
-            report.write_text(json.dumps({"ok": True, "questions": 2, "default_mode": DEFAULT_MODE, "content_types": len(REGISTRY), "ffmpeg": ffmpeg, "progress_and_output_button": True, "workspace_tabs": True}), encoding="utf-8")
+            report.write_text(json.dumps({"ok": True, "questions": 2, "default_mode": DEFAULT_MODE, "content_types": len(REGISTRY), "ffmpeg": ffmpeg, "progress_and_output_button": True, "workspace_tabs": True, "profile_persistence": True}), encoding="utf-8")
         except Exception as error:
             report.write_text(json.dumps({"ok": False, "error": str(error)}), encoding="utf-8")
             sys.exit(1)

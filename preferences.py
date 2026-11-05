@@ -25,9 +25,9 @@ USER_DEFAULTS = {
 
 
 class UserSettingsStore:
-    def __init__(self, directory):
+    def __init__(self, directory, *, config_dir=None):
         self.directory = Path(directory)
-        self.config = self.directory / "settings.json"
+        self.config = (Path(config_dir) if config_dir is not None else self.directory) / "settings.json"
         self.music_file = ""
         self.music_name = ""
         self.warning = ""
@@ -86,8 +86,8 @@ class UserSettingsStore:
         name = self.music_name if music_name is None else music_name
         data = self.validated(settings)
         data.update(music_file=filename, music_name=name)
-        self.directory.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.directory,
+        self.config.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.config.parent,
                                          suffix=".json", delete=False) as stream:
             temporary = Path(stream.name)
             json.dump(data, stream, ensure_ascii=False, indent=2)
@@ -122,9 +122,9 @@ class UserSettingsStore:
 
 
 class BackgroundStore:
-    def __init__(self, directory=None):
+    def __init__(self, directory=None, *, config_dir=None):
         self.directory = Path(directory) if directory is not None else data_directory()
-        self.config = self.directory / "background.json"
+        self.config = (Path(config_dir) if config_dir is not None else self.directory) / "background.json"
         self.warning = ""
 
     def library_directory(self, kind):
@@ -223,13 +223,13 @@ class BackgroundStore:
         return state
 
     def _save(self, state):
-        self.directory.mkdir(parents=True, exist_ok=True)
+        self.config.parent.mkdir(parents=True, exist_ok=True)
         data = {"file": Path(state["background"]).name if state["background"] else "",
                 "name": state["background_name"], "background_dim": state["background_dim"]}
         data["folder"] = (Path(state["background"]).parent.name
                           if state["background"] and Path(state["background"]).parent.name in ("images", "videos") else "")
         # A failed write leaves the previous selection intact.
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.directory,
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.config.parent,
                                          suffix=".json", delete=False) as stream:
             temporary = Path(stream.name)
             json.dump(data, stream, ensure_ascii=False, indent=2)
@@ -271,9 +271,9 @@ class BrandingStore:
 
     KINDS = ("logo_image", "ending_image", "left_logo_image", "right_chibi_image")
 
-    def __init__(self, directory=None):
+    def __init__(self, directory=None, *, config_dir=None):
         self.directory = Path(directory) if directory is not None else data_directory()
-        self.config = self.directory / "branding.json"
+        self.config = (Path(config_dir) if config_dir is not None else self.directory) / "branding.json"
         self.warning = ""
         self._state = None
 
@@ -324,10 +324,10 @@ class BrandingStore:
         return dict(state)
 
     def _save(self, state):
-        self.directory.mkdir(parents=True, exist_ok=True)
+        self.config.parent.mkdir(parents=True, exist_ok=True)
         data = {kind: {"file": Path(state[kind]).name if state[kind] else "",
                        "name": state[kind + "_name"]} for kind in self.KINDS}
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.directory,
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.config.parent,
                                          suffix=".json", delete=False) as stream:
             temporary = Path(stream.name)
             json.dump(data, stream, ensure_ascii=False, indent=2)

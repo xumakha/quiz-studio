@@ -6,7 +6,9 @@ import unicodedata
 from PIL import Image, ImageDraw, ImageOps
 from branding import CONTENT_MARGIN_X, add_logo, compose_content
 
-TEMPLATES = {"Tự động theo môn học": "auto", "Toán · Xanh bạc hà": "math", "Tiếng Anh · Xanh sáng": "english", "Quiz nhiều màu · Mẫu trước": "classic"}
+TEMPLATES = {"Tự động theo môn học": "auto", "Một chút English · Học ngôn ngữ": "english",
+             "Luyện thi · Chứng chỉ": "exam", "Quân sự · ASVAB": "military", "Tin học · Công nghệ": "tech",
+             "Toán · Xanh bạc hà": "math", "Tiếng Anh · Xanh sáng": "english", "Quiz nhiều màu · Mẫu trước": "classic"}
 
 def video_template(rows, title="", selected="auto"):
     """Choose one template for the entire video, including its previews."""
@@ -19,6 +21,12 @@ def detect_template(row, title="", selected="auto"):
         return selected
     for source in (str(row.get("subject", ""))+" "+str(row.get("lesson", "")), title):
         source = "".join(c for c in unicodedata.normalize("NFD", source.lower()) if unicodedata.category(c)!="Mn").replace("đ","d")
+        if re.search(r"\b(asvab|military|quan su|army)\b", source):
+            return "military"
+        if re.search(r"\b(tin hoc|cong nghe|computer|computing|cyber|comptia)\b", source):
+            return "tech"
+        if re.search(r"\b(chung chi|luyen thi|certification|exam|easy prep)\b", source):
+            return "exam"
         if re.search(r"\b(english|tieng anh|ngoai ngu|esl|ielts)\b", source):
             return "english"
         if re.search(r"\b(toan|math|mathematics|algebra|geometry)\b", source):
@@ -29,6 +37,9 @@ def detect_template(row, title="", selected="auto"):
 def render_frame(row, number, total, title, settings, reveal=False, countdown=None):
     from engine import draw_option_text, fitted, font
     theme = detect_template(row, title, settings.template)
+    if theme in ("exam", "military", "tech"):
+        from prep_themes import render_frame as prep
+        return prep(row, number, total, title, settings, reveal, countdown)
     if theme == "classic":
         from video_classic import render_frame as classic
         return classic(row, number, total, title, settings, reveal, countdown)
@@ -96,7 +107,8 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
         draw.text((content_left+177,1184),"giây",font=font(31),fill=muted)
         draw.text((content_right-30,1190),"Bạn chọn đáp án nào?",anchor="rt",font=font(25),fill=muted)
         draw.rounded_rectangle((content_left+30,1265,content_right-30,1280),7,fill="#d3e2df")
-        fraction=max(0,min(1,countdown/max(1,settings.countdown)))
+        from content_timeline import thinking_seconds
+        fraction=max(0,min(1,countdown/max(1,thinking_seconds(row, settings))))
         if fraction: draw.rounded_rectangle((content_left+30,1265,content_left+30+(content_right-content_left-60)*fraction,1280),7,fill="#387a5a")
     if settings.watermark_enabled and settings.brand.strip():
         draw.rounded_rectangle((content_left,1420,content_right,1470),15,fill=(255,255,255,185))

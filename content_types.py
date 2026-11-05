@@ -189,7 +189,6 @@ def normalize(data, legacy_parser):
                 raise ValueError(f"Câu {i}: thinking_seconds phải lớn hơn 0.")
             if re.search(r"(?i)(?<![a-z])" + re.escape(row["answer"]) + r"(?![a-z])", str(data.get("title", ""))):
                 raise ValueError(f"Câu {i}: tiêu đề không được chứa đáp án tiếng Anh.")
-            row["_default_thinking_seconds"] = 5
         if "thinking_seconds" not in row and "thinking_seconds" in settings:
             row["_default_thinking_seconds"] = settings["thinking_seconds"]
     return str(data.get("title", "MỘT CHÚT ENGLISH")), rows, mode

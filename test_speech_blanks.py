@@ -21,7 +21,8 @@ class SpeechBlankTests(unittest.TestCase):
                      patch('engine.gTTS') as google, \
                      patch('engine.edge_tts.Communicate') as edge, \
                      patch.object(renderer, 'run', side_effect=run):
-                    edge.return_value.save = AsyncMock()
+                    edge.return_value.save = AsyncMock(side_effect=lambda path: Path(path).write_bytes(b'audio'))
+                    google.return_value.save.side_effect = lambda path: Path(path).write_bytes(b'audio')
                     asyncio.run(renderer.speech('Điền ___: [en]She _ _ is a student.[/en]', root/'out.wav', root))
                     provider = google if voice.startswith('google:') else edge
                     self.assertEqual([c.args[0] for c in provider.call_args_list], ['Điền : ', 'She is a student.'])

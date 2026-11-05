@@ -43,6 +43,26 @@ class GuessWordTests(unittest.TestCase):
                 render_scene(rows[0], scene, 1, 10, title, settings)
                 self.assertIn(rows[0]['context_hint'], [c.args[2] for c in draw.call_args_list])
 
+    def test_explanation_preserves_selected_google_and_us_english_voices(self):
+        _, rows, _ = normalize(sample_document('guess_word'), parse_legacy_questions)
+        for voice in ('google:en', 'en-US-JennyNeural', 'en-US-GuyNeural'):
+            with self.subTest(voice=voice):
+                settings = Settings(voice='google:vi', english_voice=voice)
+                explanation = next(scene for scene in plan_item(rows[0], settings)
+                                   if scene.phase == 'explanation')
+                self.assertEqual(explanation.speech_parts, ((rows[0]['explanation'], voice),))
+                captured = []
+
+                async def speech(renderer, text, target, directory, on_part=lambda value: None):
+                    captured.append((text, renderer.settings.voice, renderer.settings.english_voice))
+                    with wave.open(str(target), 'wb') as audio:
+                        audio.setparams((2, 2, 44100, 0, 'NONE', 'not compressed'))
+                        audio.writeframes(bytes(44100 * 4))
+
+                with tempfile.TemporaryDirectory() as directory, patch.object(Renderer, 'speech', new=speech):
+                    prepare_scene(Renderer(settings), explanation, Path(directory), 'explanation', 1)
+                self.assertEqual(captured, [(rows[0]['explanation'], 'google:vi', voice)])
+
     def test_ipa_reveal_voice_and_repeat_pause(self):
         doc = sample_document('guess_word')
         doc['items'][0]['ipa'] = '/ækˈtɪv.ə.ti/'
