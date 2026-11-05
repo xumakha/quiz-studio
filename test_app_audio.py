@@ -23,17 +23,18 @@ class MacAudioTests(unittest.TestCase):
                 stream.writeframes(bytes(44100 * 4))
 
         with tempfile.TemporaryDirectory() as directory:
-            app = App(data_dir=directory)
-            app.withdraw()
+            host = App(data_dir=directory)
+            host.withdraw()
+            app = host.active_tab
             try:
                 app.speech.set(True)
                 app.countdown.set(3)
-                app.update()
+                host.update()
                 with patch.object(Renderer, "speech", local_speech), patch("app.messagebox.showerror") as errors:
                     app.play_preview()
                     deadline = time.monotonic() + 15
                     while app.audio_player.process is None and time.monotonic() < deadline:
-                        app.update()
+                        host.update()
                         time.sleep(0.02)
                     process = app.audio_player.process
                     errors.assert_not_called()
@@ -49,7 +50,7 @@ class MacAudioTests(unittest.TestCase):
                     self.assertIsNotNone(replacement.poll())
                     self.assertFalse(preview_directory.exists())
                     # Complete the worker's queued status before the next action.
-                    app.update()
+                    host.update()
                     app.busy = False
                     results = []
                     with patch.object(app, "start_job", lambda job: results.append(job())):
@@ -60,7 +61,7 @@ class MacAudioTests(unittest.TestCase):
                     errors.assert_not_called()
             finally:
                 app.busy = False
-                app.close()
+                host.close()
 
 
 if __name__ == "__main__":

@@ -1,5 +1,13 @@
 # Đoán từ qua nghĩa tiếng Việt
 
+Bản mới hỗ trợ nhiều tab video: bấm **+** hoặc **Ctrl+T**, mỗi tab có nội dung và tác vụ xuất riêng. Trong **Tùy chỉnh video → Video**, dùng **Chọn ảnh logo** và **Chọn ảnh cuối video** để thay ảnh cho tab hiện tại; có nút khôi phục ảnh mặc định và xem trước ảnh kết thúc. Mở `Mo-QuizStudio.bat` để chạy bản mới tại `release-corners/QuizStudio/QuizStudio.exe`. Xem [hướng dẫn nhiều tab](../README.md#tạo-video).
+
+Nhấp đúp tên tab hoặc chuột phải → **Đổi tên tab…** để đổi tên. Logo và ảnh cuối video đều có danh sách **Ảnh đã tải lên** → **Dùng ảnh đã chọn** để dùng lại ảnh cũ; thư viện giữ ảnh ngay cả khi khôi phục mặc định hoặc xóa file gốc.
+
+Mục **Video → Câu kết cuối video** cho phép gõ lời đọc khi hiện ảnh kết thúc và **Nghe thử câu kết**. Bật **Tạo giọng đọc** để phát; để trống nếu chỉ muốn hiện ảnh. Câu kết được lưu riêng theo tab trong phiên và tự lưu cùng cài đặt.
+
+Mục **Video → Logo góc trái / Ảnh chibi góc phải** cho phép bật/tắt từng ảnh ở đầu video, tải ảnh thay thế hoặc chọn ảnh đã tải từ thư viện. Hai mục giữ ảnh, trạng thái riêng theo tab và tự lưu; logo chìm phía sau nội dung có lựa chọn riêng. Xem trước và xuất video dùng cùng cài đặt.
+
 Chọn **Đoán từ qua nghĩa tiếng Việt** trong DẠNG VIDEO, sau đó chọn **Dùng dữ liệu mẫu** hoặc mở `examples/guess_word.json` (10 câu). JSON có `mode` hoặc `type` ở cấp tài liệu là `guess_word` sẽ tự chọn chế độ này. Trong video tổng hợp, đặt `type: guess_word` trên từng item.
 
 Dùng **Chỉnh qua form** để sửa nghĩa, đáp án, trình độ, loại từ, ngữ cảnh, IPA, giải thích và ví dụ. Các thao tác thêm, nhân bản, xóa, đổi thứ tự, lưu JSON và cấu hình logo/nền/nhạc dùng chung với các dạng khác. Không có lựa chọn ABCD.

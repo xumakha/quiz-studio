@@ -2,6 +2,7 @@
 from dataclasses import dataclass, replace
 from content_types import REGISTRY, en, plain
 
+DEFAULT_ENDING_TEXT = "theo dõi một chút english để học thêm một chút tiếng anh mỗi ngày nhé!"
 
 @dataclass(frozen=True)
 class Scene:
@@ -201,8 +202,9 @@ def guess_word(row, settings):
 BUILDERS = {key: globals()[key] for key in REGISTRY}
 
 
-def ending_scene():
-    return Scene("ending", "", "theo dõi một chút english để học thêm một chút tiếng anh mỗi ngày nhé!")
+def ending_scene(settings=None):
+    narration = DEFAULT_ENDING_TEXT if settings is None else settings.ending_text.strip()
+    return Scene("ending", "", narration)
 
 
 def plan_item(row, settings):

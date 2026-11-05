@@ -9,6 +9,7 @@ from pathlib import Path
 from platform_support import data_directory
 
 from background_media import validate_background, is_video, VIDEO_EXTENSIONS
+from content_timeline import DEFAULT_ENDING_TEXT
 
 
 USER_DEFAULTS = {
@@ -18,6 +19,8 @@ USER_DEFAULTS = {
     "video_template": "Tự động theo môn học", "brand": "QUIZ STUDIO",
     "watermark_enabled": True, "read_options": True, "read_explanation": True, "speech": True,
     "music_volume": 12, "reveal": False,
+    "ending_text": DEFAULT_ENDING_TEXT,
+    "left_logo_enabled": True, "right_chibi_enabled": True,
 }
 
 
@@ -255,5 +258,145 @@ class BackgroundStore:
         state["background_dim"] = dim
         self._save(state)
 
+    def save_selection(self, background, name, dim):
+        """Persist this tab's complete selection without loading another tab's."""
+        self._save({"background": background, "background_name": name, "background_dim": dim})
+
     def clear(self, dim):
         self._save({"background": "", "background_name": "", "background_dim": dim})
+
+
+class BrandingStore:
+    """Copy selected artwork durably while keeping each tab's selection separate."""
+
+    KINDS = ("logo_image", "ending_image", "left_logo_image", "right_chibi_image")
+
+    def __init__(self, directory=None):
+        self.directory = Path(directory) if directory is not None else data_directory()
+        self.config = self.directory / "branding.json"
+        self.warning = ""
+        self._state = None
+
+    @staticmethod
+    def _validate_image(path):
+        from PIL import Image
+        if path.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"):
+            raise ValueError("Hãy chọn ảnh PNG, JPG, WebP, BMP hoặc GIF.")
+        with Image.open(path) as source:
+            source.load()
+
+    def load(self):
+        state = {key: "" for kind in self.KINDS for key in (kind, kind + "_name")}
+        self.warning = ""
+        try:
+            data = json.loads(self.config.read_text(encoding="utf-8")) if self.config.exists() else {}
+            if not isinstance(data, dict):
+                raise ValueError("Cài đặt ảnh phải là object.")
+        except (OSError, ValueError) as error:
+            data = {}
+            self.warning = f"Không nạp được ảnh logo / kết thúc đã lưu: {error}"
+        warnings = [self.warning] if self.warning else []
+        for kind in self.KINDS:
+            try:
+                entry = data.get(kind, {})
+                if not isinstance(entry, dict):
+                    raise ValueError("Cài đặt ảnh không hợp lệ.")
+                filename = entry.get("file", "")
+                if not filename:
+                    continue
+                if not isinstance(filename, str) or Path(filename).name != filename:
+                    raise ValueError("Tên file ảnh đã lưu không hợp lệ.")
+                path = self.directory / "branding" / "images" / filename
+                self._validate_image(path)
+                state[kind] = str(path.resolve())
+                state[kind + "_name"] = str(entry.get("name", filename))
+            except (OSError, ValueError) as error:
+                label = {"logo_image": "logo chìm", "ending_image": "kết thúc",
+                         "left_logo_image": "logo góc trái", "right_chibi_image": "chibi góc phải"}[kind]
+                warnings.append(f"Không nạp được ảnh {label}; dùng ảnh mặc định. ({error})")
+        self.warning = "\n".join(warnings)
+        # Before separate corner controls, the selected watermark also supplied
+        # the left corner. Retain that image when upgrading an existing config.
+        if "left_logo_image" not in data:
+            state["left_logo_image"] = state["logo_image"]
+            state["left_logo_image_name"] = state["logo_image_name"]
+        self._state = state
+        return dict(state)
+
+    def _save(self, state):
+        self.directory.mkdir(parents=True, exist_ok=True)
+        data = {kind: {"file": Path(state[kind]).name if state[kind] else "",
+                       "name": state[kind + "_name"]} for kind in self.KINDS}
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.directory,
+                                         suffix=".json", delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(data, stream, ensure_ascii=False, indent=2)
+        try:
+            os.replace(temporary, self.config)
+        finally:
+            temporary.unlink(missing_ok=True)
+        self._state = dict(state)
+        return dict(state)
+
+    def select(self, kind, source):
+        if kind not in self.KINDS:
+            raise ValueError("Loại ảnh không hợp lệ.")
+        source = Path(source)
+        self._validate_image(source)
+        with source.open("rb") as stream:
+            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        assets = self.directory / "branding" / "images"
+        assets.mkdir(parents=True, exist_ok=True)
+        target = assets / (digest + source.suffix.lower())
+        if not target.exists():
+            BackgroundStore._copy_asset(source, target)
+        BackgroundStore._save_name(target, source.name)
+        state = dict(self._state if self._state is not None else self.load())
+        state.update({kind: str(target.resolve()), kind + "_name": source.name})
+        return self._save(state)
+
+    def library_directory(self):
+        return self.directory / "branding" / "images"
+
+    def library(self):
+        """All pickers can reuse any previously uploaded branding image."""
+        assets = self.library_directory()
+        assets.mkdir(parents=True, exist_ok=True)
+        state = self._state if self._state is not None else self.load()
+        entries = []
+        for path in assets.iterdir():
+            if not path.is_file() or path.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"):
+                continue
+            name = next((state[kind + "_name"] for kind in self.KINDS
+                         if state[kind] == str(path.resolve())), path.name)
+            try:
+                metadata = json.loads(path.with_suffix(path.suffix + ".json").read_text(encoding="utf-8"))
+                name = str(metadata["name"])
+            except (OSError, ValueError, KeyError, TypeError):
+                pass
+            entries.append({"path": str(path.resolve()), "name": name})
+        return sorted(entries, key=lambda entry: (entry["name"].casefold(), entry["path"]))
+
+    def select_saved(self, kind, path):
+        if kind not in self.KINDS:
+            raise ValueError("Loại ảnh không hợp lệ.")
+        selected = Path(path).resolve()
+        entry = next((entry for entry in self.library() if Path(entry["path"]) == selected), None)
+        if entry is None:
+            raise ValueError("Ảnh không còn trong thư viện. Hãy tải lên lại.")
+        self._validate_image(selected)
+        state = dict(self._state if self._state is not None else self.load())
+        state.update({kind: entry["path"], kind + "_name": entry["name"]})
+        return self._save(state)
+
+    def reset(self, kind):
+        if kind not in self.KINDS:
+            raise ValueError("Loại ảnh không hợp lệ.")
+        state = dict(self._state if self._state is not None else self.load())
+        state.update({kind: "", kind + "_name": ""})
+        return self._save(state)
+
+    def save(self):
+        """Make this instance's selection the default for the next launch."""
+        state = self._state if self._state is not None else self.load()
+        return self._save(state)

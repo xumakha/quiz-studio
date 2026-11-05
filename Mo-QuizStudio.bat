@@ -1,5 +1,23 @@
 @echo off
 cd /d "%~dp0"
+if exist "release-corners\QuizStudio\QuizStudio.exe" (
+  if exist "release-corners\QuizStudio\_internal\_tcl_data\init.tcl" (
+    start "" "release-corners\QuizStudio\QuizStudio.exe"
+    exit /b
+  )
+)
+if exist "release-outro\QuizStudio\QuizStudio.exe" (
+  if exist "release-outro\QuizStudio\_internal\_tcl_data\init.tcl" (
+    start "" "release-outro\QuizStudio\QuizStudio.exe"
+    exit /b
+  )
+)
+if exist "release-tabs\QuizStudio\QuizStudio.exe" (
+  if exist "release-tabs\QuizStudio\_internal\_tcl_data\init.tcl" (
+    start "" "release-tabs\QuizStudio\QuizStudio.exe"
+    exit /b
+  )
+)
 if exist "release-background-library\QuizStudio\QuizStudio.exe" (
   if exist "release-background-library\QuizStudio\_internal\_tcl_data\init.tcl" (
     start "" "release-background-library\QuizStudio\QuizStudio.exe"

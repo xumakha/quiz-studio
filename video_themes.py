@@ -49,7 +49,7 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     image = Image.new("RGBA", background.size)
     draw = ImageDraw.Draw(image,"RGBA")
     if settings.watermark_enabled:
-        add_logo(image, watermark=True)
+        add_logo(image, watermark=True, logo_image=settings.logo_image)
     def text(text, rect, size, color=ink, bold=True, align="center"):
         l,t,r,b=rect
         face,lines,step=fitted(draw,text,size,r-l,b-t,bold)
@@ -101,5 +101,5 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     if settings.watermark_enabled and settings.brand.strip():
         draw.rounded_rectangle((content_left,1420,content_right,1470),15,fill=(255,255,255,185))
         text(settings.brand,(content_left+30,1428,content_right-30,1462),26,muted)
-    add_logo(image)
+    add_logo(image, settings=settings)
     return compose_content(background, image, settings)

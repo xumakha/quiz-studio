@@ -11,23 +11,30 @@ import threading
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from PIL import ImageTk
 from engine import Cancelled, Renderer, Settings, VOICES, frame, parse_questions
-from preferences import BackgroundStore, UserSettingsStore, USER_DEFAULTS
+from preferences import BackgroundStore, BrandingStore, UserSettingsStore, USER_DEFAULTS
 from video_themes import TEMPLATES, video_template
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 
 
-class App(tk.Tk):
-    def __init__(self, data_dir=None):
-        super().__init__()
-        self.title("Quiz Studio — Tạo video trắc nghiệm")
-        self.geometry("1380x900")
-        self.minsize(1100, 740)
-        self.configure(bg="#10172b")
+class VideoTab(tk.Frame):
+    """An independent editor, preview and render job within the main window."""
+
+    def __init__(self, host, number, data_dir=None):
+        super().__init__(host.workspace)
+        self.host = host
+        self.number = number
+        self.tab_name = f"Video {number}"
+        self._timers = set()
+        self.disposed = False
+        self.closing = False
+        self.export_path = None
+        self.job_state = ""
+        self.clean_source = ""
         self.events = queue.Queue()
         self.audio_player = AudioPlayer()
         self.cancel = threading.Event()
@@ -43,6 +50,9 @@ class App(tk.Tk):
         saved_settings = self.user_store.load()
         self.music = saved_settings["music"]
         self.music_name = saved_settings["music_name"]
+        self.branding_store = BrandingStore(self.background_store.directory)
+        for name, value in self.branding_store.load().items():
+            setattr(self, name, value)
         self.last_output = None
         self.job_exporting = False
         from modern_ui import build_ui
@@ -51,11 +61,48 @@ class App(tk.Tk):
             getattr(self, name).trace_add("write", self.user_settings_changed)
         self.text.insert("1.0", (ROOT / "examples/questions.json").read_text(encoding="utf-8"))
         self.validate()
-        warnings = [store.warning for store in (self.background_store, self.user_store) if store.warning]
+        self.mark_clean()
+        warnings = [store.warning for store in (self.background_store, self.user_store, self.branding_store) if store.warning]
         if warnings:
             self.status.configure(text="\n".join(warnings))
-        self.protocol("WM_DELETE_WINDOW", self.close)
-        self.after(100, self.poll)
+        self.poll_timer = self.after(100, self.poll)
+
+    def after(self, ms, func=None, *args):
+        if func is None:
+            return super().after(ms)
+        def invoke():
+            self._timers.discard(timer)
+            if not self.disposed:
+                func(*args)
+        timer = super().after(ms, invoke)
+        self._timers.add(timer)
+        return timer
+
+    def after_cancel(self, timer):
+        self._timers.discard(timer)
+        super().after_cancel(timer)
+
+    @property
+    def dirty(self):
+        return self.text.get("1.0", "end-1c") != self.clean_source
+
+    def mark_clean(self):
+        self.clean_source = self.text.get("1.0", "end-1c")
+        self.host.update_tab(self)
+
+    def persist(self):
+        if self.dim_save_timer:
+            self.after_cancel(self.dim_save_timer)
+        if not self.save_background_dim():
+            return False
+        if self.settings_save_timer:
+            self.after_cancel(self.settings_save_timer)
+        try:
+            self.branding_store.save()
+        except OSError as error:
+            self.status.configure(text=f"Không lưu được ảnh: {error}")
+            return False
+        return self.save_user_settings()
 
     def move_question(self, direction):
         if self.rows:
@@ -85,6 +132,7 @@ class App(tk.Tk):
         if not self.text.edit_modified():
             return
         self.text.edit_modified(False)
+        self.host.update_tab(self)
         timer = getattr(self, "json_color_timer", None)
         if timer:
             self.after_cancel(timer)
@@ -127,7 +175,16 @@ class App(tk.Tk):
         if not 0 <= dim <= 70:
             raise ValueError("Mức làm tối nền phải từ 0 đến 70%.")
         width, height = (720, 1280) if self.resolution.get().startswith("720") else (1080, 1920)
-        return Settings(voice=VOICES[self.voice.get()], english_voice=VOICES[self.en_voice.get()], dialogue_voice_a=VOICES[self.dialogue_voice_a.get()], dialogue_voice_b=VOICES[self.dialogue_voice_b.get()], rate=rate, pitch=pitch, countdown=countdown, width=width, height=height, read_options=self.read_options.get(), read_explanation=self.read_explanation.get(), speech=self.speech.get(), brand=self.brand.get(), watermark_enabled=self.watermark_enabled.get(), template=TEMPLATES[self.video_template.get()], background=self.background, background_dim=dim, music=self.music, music_volume=volume / 100)
+        return Settings(
+            voice=VOICES[self.voice.get()], english_voice=VOICES[self.en_voice.get()],
+            dialogue_voice_a=VOICES[self.dialogue_voice_a.get()], dialogue_voice_b=VOICES[self.dialogue_voice_b.get()],
+            rate=rate, pitch=pitch, countdown=countdown, width=width, height=height,
+            read_options=self.read_options.get(), read_explanation=self.read_explanation.get(), speech=self.speech.get(),
+            brand=self.brand.get(), watermark_enabled=self.watermark_enabled.get(), template=TEMPLATES[self.video_template.get()],
+            background=self.background, background_dim=dim, music=self.music, music_volume=volume / 100,
+            logo_image=self.logo_image, ending_image=self.ending_image, ending_text=self.ending_text.get(),
+            left_logo_image=self.left_logo_image, right_chibi_image=self.right_chibi_image,
+            left_logo_enabled=self.left_logo_enabled.get(), right_chibi_enabled=self.right_chibi_enabled.get())
 
     def validate(self):
         try:
@@ -176,7 +233,7 @@ class App(tk.Tk):
             picture.thumbnail((180, 220))
             self.preview_image = ImageTk.PhotoImage(picture)
             self.preview.configure(image=self.preview_image)
-            if settings.background_overlay:
+            if settings.background_overlay and self.host.active_tab is self:
                 self.start_background_preview(settings, picture)
             return True
         except Exception as error:
@@ -193,6 +250,7 @@ class App(tk.Tk):
                 self.text.delete("1.0", "end")
                 self.text.insert("1.0", data)
                 self.validate()
+                self.mark_clean()
             except Exception as error:
                 messagebox.showerror("Không mở được JSON", str(error))
 
@@ -204,6 +262,7 @@ class App(tk.Tk):
             from content_types import export_document
             document = export_document(self.quiz_title, self.rows, self.content_editor.mode)
             Path(path).write_text(json.dumps(document, ensure_ascii=False, indent=2), encoding="utf-8")
+            self.mark_clean()
 
     def stop_background_preview(self):
         timer = getattr(self, "background_preview_timer", None)
@@ -257,18 +316,22 @@ class App(tk.Tk):
             shutil.rmtree(directory, ignore_errors=True)
             self.preview_directory = None
 
-    def play_preview(self, whole=False):
+    def play_preview(self, whole=False, ending_only=False):
         self.stop_preview()
-        if self.busy or not self.validate():
+        if self.busy or (not ending_only and not self.validate()):
             return
         from content_timeline import plan_item, prepare_scene, ending_scene, preview_audio
-        settings = self.settings()
+        try:
+            settings = self.settings()
+        except (ValueError, tk.TclError) as error:
+            messagebox.showerror("Cài đặt", str(error), parent=self.winfo_toplevel())
+            return
         settings.template = video_template(self.rows, self.quiz_title, settings.template)
         indexes = range(len(self.rows)) if whole else [self.selected.get()-1]
         rows, title = list(self.rows), self.quiz_title
-        scenes = [(i, scene) for i in indexes for scene in plan_item(rows[i], settings)]
-        if whole:
-            scenes.append((len(rows)-1, ending_scene()))
+        scenes = [] if ending_only else [(i, scene) for i in indexes for scene in plan_item(rows[i], settings)]
+        if whole or ending_only:
+            scenes.append((max(0, len(rows)-1), ending_scene(settings)))
         self.preview_cancel = threading.Event()
         cancel = self.preview_cancel
         self.preview_generation = getattr(self, "preview_generation", 0) + 1
@@ -278,7 +341,8 @@ class App(tk.Tk):
             renderer = Renderer(settings, cancel=cancel)
             try:
                 from content_renderer import validate_layout
-                validate_layout(title, rows, settings, renderer.check)
+                if not ending_only:
+                    validate_layout(title, rows, settings, renderer.check)
                 prepared = [(i, prepare_scene(renderer, scene, directory, str(n), i+1)) for n, (i, scene) in enumerate(scenes)]
                 audio = preview_audio(renderer, [p for _, p in prepared], directory)
                 renderer.check()
@@ -286,14 +350,16 @@ class App(tk.Tk):
             except Exception as error:
                 import shutil
                 shutil.rmtree(directory, ignore_errors=True)
-                if not cancel.is_set():
-                    self.events.put(("error", str(error)))
+                if cancel.is_set():
+                    raise Cancelled("Đã dừng chuẩn bị xem trước.") from error
+                raise
             return "Đã chuẩn bị preview."
         self.start_job(prepare)
 
     def begin_preview(self, data):
         generation, rows, title, settings, scenes, directory, audio = data
-        if generation != getattr(self, "preview_generation", 0) or self.preview_cancel.is_set():
+        if (generation != getattr(self, "preview_generation", 0) or self.preview_cancel.is_set()
+                or self.host.active_tab is not self or self.closing):
             import shutil
             shutil.rmtree(directory, ignore_errors=True)
             return
@@ -387,6 +453,82 @@ class App(tk.Tk):
             self.update_media_label()
             self.show_preview()
 
+    def update_branding(self, state):
+        for name, value in state.items():
+            setattr(self, name, value)
+        for kind, widget in self.branding_labels.items():
+            widget.configure(text=getattr(self, kind + "_name") or "Ảnh mặc định")
+        self.refresh_branding_library()
+
+    def refresh_branding_library(self):
+        try:
+            self.branding_library_entries = self.branding_store.library()
+            for kind, picker in self.branding_library_boxes.items():
+                entries = self.branding_library_entries
+                picker.configure(values=[f"{index + 1}. {entry['name']}" for index, entry in enumerate(entries)])
+                if entries:
+                    picker.current(next((index for index, entry in enumerate(entries)
+                                         if entry["path"] == getattr(self, kind)), 0))
+                else:
+                    picker.set("Chưa có ảnh đã lưu")
+        except (OSError, ValueError) as error:
+            self.branding_library_entries = []
+            messagebox.showerror("Không đọc được thư viện ảnh", str(error), parent=self.winfo_toplevel())
+
+    def choose_saved_branding(self, kind):
+        index = self.branding_library_boxes[kind].current()
+        if not 0 <= index < len(self.branding_library_entries):
+            return
+        try:
+            self.update_branding(self.branding_store.select_saved(kind, self.branding_library_entries[index]["path"]))
+            self.show_ending_preview() if kind == "ending_image" else self.show_preview()
+            self.status.configure(text="Đã chọn ảnh từ thư viện cho tab này.")
+        except (OSError, ValueError) as error:
+            messagebox.showerror("Không chọn được ảnh", str(error), parent=self.winfo_toplevel())
+            self.refresh_branding_library()
+
+    def open_branding_library_folder(self):
+        try:
+            directory = self.branding_store.library_directory()
+            directory.mkdir(parents=True, exist_ok=True)
+            open_in_file_manager(directory)
+        except OSError as error:
+            messagebox.showerror("Không mở được thư viện ảnh", str(error), parent=self.winfo_toplevel())
+
+    def choose_branding(self, kind):
+        titles = {"logo_image": "Chọn logo chìm", "ending_image": "Chọn ảnh cuối video",
+                  "left_logo_image": "Chọn logo góc trái", "right_chibi_image": "Chọn ảnh chibi góc phải"}
+        path = filedialog.askopenfilename(parent=self.winfo_toplevel(),
+            title=titles[kind],
+            filetypes=[("Ảnh", "*.png *.jpg *.jpeg *.webp *.bmp")])
+        if not path:
+            return
+        try:
+            self.update_branding(self.branding_store.select(kind, path))
+            self.show_ending_preview() if kind == "ending_image" else self.show_preview()
+            self.status.configure(text="Đã lưu ảnh. Lựa chọn chỉ thay đổi trong tab này.")
+        except (OSError, ValueError) as error:
+            messagebox.showerror("Không chọn được ảnh", str(error), parent=self.winfo_toplevel())
+
+    def reset_branding(self, kind):
+        try:
+            self.update_branding(self.branding_store.reset(kind))
+            self.show_ending_preview() if kind == "ending_image" else self.show_preview()
+        except (OSError, ValueError) as error:
+            messagebox.showerror("Không khôi phục được ảnh", str(error), parent=self.winfo_toplevel())
+
+    def show_ending_preview(self):
+        self.stop_preview()
+        try:
+            from content_renderer import render_ending
+            picture = render_ending(self.settings())
+            picture.thumbnail((180, 220))
+            self.preview_image = ImageTk.PhotoImage(picture, master=self)
+            self.preview.configure(image=self.preview_image)
+            self.template_label.configure(text="ẢNH CUỐI VIDEO")
+        except Exception as error:
+            self.validation.configure(text=str(error), foreground="#ba4247")
+
     def refresh_background_library(self):
         try:
             self.background_library_entries = self.background_store.library()
@@ -440,11 +582,13 @@ class App(tk.Tk):
         try:
             dim = self.background_dim.get()
             if 0 <= dim <= 70:
-                self.background_store.save_dim(dim)
+                self.background_store.save_selection(self.background, self.background_name, dim)
+                return True
         except (ValueError, tk.TclError):
             pass
         except OSError as error:
             self.status.configure(text=f"Không lưu được mức làm tối nền: {error}")
+        return False
 
     def clear_media(self):
         try:
@@ -464,6 +608,8 @@ class App(tk.Tk):
             return
         self.busy = True
         self.job_exporting = exporting
+        self.job_state = "0%" if exporting else "Đang chuẩn bị"
+        self.host.update_tab(self)
         self.cancel.clear()
         self.export_button.configure(state="disabled")
         self.progress.stop()
@@ -482,7 +628,12 @@ class App(tk.Tk):
                 self.events.put(("cancel", str(error)))
             except Exception as error:
                 self.events.put(("error", str(error)))
-        threading.Thread(target=worker, daemon=True).start()
+        self.worker = threading.Thread(target=worker, daemon=True)
+        self.worker.start()
+
+    def cancel_job(self):
+        self.cancel.set()
+        self.stop_preview()
 
     def voice_preview(self):
         if self.busy:
@@ -504,24 +655,35 @@ class App(tk.Tk):
                 renderer = Renderer(settings, cancel=self.cancel)
                 asyncio.run(renderer.speech(text, target, directory))
                 renderer.check()
-                self.audio_player.play(target, wait=True)
+                self.audio_player.play(target, wait=True, cancel=self.cancel)
+                renderer.check()
             return "Đã phát giọng nghe thử."
         self.start_job(job)
 
     def export(self):
         if self.busy or not self.validate():
             return
-        filename = datetime.now().strftime("%d-%m-%Y-%Hh%M.mp4")
+        filename = datetime.now().strftime("%d-%m-%Y-%Hh%M%S") + f"-tab-{self.number}.mp4"
         path = filedialog.asksaveasfilename(defaultextension=".mp4", initialfile=filename, filetypes=[("Video MP4", "*.mp4")])
         if not path:
             return
-        settings, rows, title = self.settings(), list(self.rows), self.quiz_title
+        try:
+            settings, rows, title = self.settings(), list(self.rows), self.quiz_title
+        except (ValueError, tk.TclError) as error:
+            messagebox.showerror("Cài đặt", str(error), parent=self.winfo_toplevel())
+            return
+        if not self.host.reserve_output(self, path):
+            return
         def job():
             renderer = Renderer(settings, lambda text: self.events.put(("log", text)), self.cancel,
                                 progress=lambda percent, message: self.events.put(("progress", (percent, message))))
             renderer.render(title, rows, path)
             return {"message": f"Đã xuất video: {path}", "path": str(Path(path).resolve()), "duration": renderer.duration}
-        self.start_job(job, exporting=True)
+        try:
+            self.start_job(job, exporting=True)
+        except Exception:
+            self.host.release_output(self)
+            raise
 
     def open_output_folder(self):
         if not self.last_output:
@@ -535,6 +697,9 @@ class App(tk.Tk):
             messagebox.showerror("Không mở được thư mục", str(error))
 
     def poll(self):
+        if getattr(self, "poll_timer", None):
+            self.after_cancel(self.poll_timer)
+            self.poll_timer = None
         try:
             while True:
                 kind, text = self.events.get_nowait()
@@ -546,6 +711,8 @@ class App(tk.Tk):
                     self.progress["value"] = percent
                     self.progress_label.configure(text=f"{int(percent)}%")
                     self.status.configure(text=message)
+                    self.job_state = f"{int(percent)}%"
+                    self.host.update_tab(self)
                     continue
                 if kind == "done" and self.job_exporting:
                     self.last_output = Path(text["path"])
@@ -556,6 +723,7 @@ class App(tk.Tk):
                 self.status.configure(text=text)
                 if kind != "log":
                     self.busy = False
+                    self.host.release_output(self)
                     self.progress.stop()
                     self.progress.configure(mode="determinate")
                     if kind == "done" and self.job_exporting:
@@ -569,38 +737,261 @@ class App(tk.Tk):
                     else:
                         self.progress_label.configure(text="Lỗi")
                     self.export_button.configure(state="normal")
-                    if kind == "error":
+                    self.job_state = {"done": "Xong", "cancel": "Đã hủy", "error": "Lỗi"}.get(kind, "")
+                    self.host.update_tab(self)
+                    if kind == "error" and not self.closing:
                         guidance = "\n\nKiểm tra Internet rồi thử lại, hoặc bỏ chọn Tạo giọng đọc để xuất offline." if "(TTS)" in text else ""
                         messagebox.showerror("Tác vụ thất bại", text + guidance)
         except queue.Empty:
             pass
-        self.after(100, self.poll)
+        if self.closing and not self.busy:
+            self.host.finish_close_tab(self)
+            return
+        self.poll_timer = self.after(100, self.poll)
 
-    def close(self):
+    def destroy(self):
+        if self.disposed:
+            return
+        self.cancel.set()
         self.stop_preview()
-        if self.busy:
-            self.cancel.set()
-            self.status.configure(text="Đang hủy tác vụ, hãy đóng cửa sổ sau khi tác vụ dừng.")
+        self.disposed = True
+        for timer in list(self._timers):
+            self.after_cancel(timer)
+        super().destroy()
+
+
+class App(tk.Tk):
+    """Browser-style workspace tabs sharing only the saved media library."""
+
+    def __init__(self, data_dir=None):
+        super().__init__()
+        self.title("Quiz Studio — Tạo video trắc nghiệm")
+        self.geometry("1380x950")
+        self.minsize(1100, 790)
+        self.configure(bg="#edf2f4")
+        self.data_dir = data_dir
+        self.tabs = []
+        self.active_tab = None
+        self.next_tab_number = 1
+        self.output_owners = {}
+        self.closing = False
+        self.tab_widgets = {}
+        strip = tk.Frame(self, bg="#e7edef", height=44)
+        strip.pack(fill="x")
+        for text, command in (("‹", lambda: self.tab_canvas.xview_scroll(-2, "units")),
+                              ("›", lambda: self.tab_canvas.xview_scroll(2, "units"))):
+            tk.Button(strip, text=text, command=command, relief="flat", bg="#e7edef",
+                      font=("Segoe UI", 16), width=2).pack(side="left")
+        tk.Button(strip, text="+", command=self.new_tab, relief="flat", bg="#e7edef",
+                  fg="#218c7c", font=("Segoe UI", 20), width=3).pack(side="right")
+        self.tab_canvas = tk.Canvas(strip, height=44, bg="#e7edef", highlightthickness=0)
+        self.tab_canvas.pack(side="left", fill="x", expand=True)
+        self.tab_strip = tk.Frame(self.tab_canvas, bg="#e7edef")
+        self.tab_canvas.create_window((0, 0), window=self.tab_strip, anchor="nw", height=44)
+        self.tab_strip.bind("<Configure>", lambda event: self.tab_canvas.configure(
+            scrollregion=self.tab_canvas.bbox("all")))
+        self.workspace = tk.Frame(self, bg="#f5f7fa")
+        self.workspace.pack(fill="both", expand=True)
+        self.bind("<Control-t>", lambda event: self._shortcut(self.new_tab))
+        self.bind("<Control-w>", lambda event: self._shortcut(lambda: self.close_tab(self.active_tab)))
+        self.bind("<Control-Tab>", lambda event: self._shortcut(lambda: self.cycle_tab(1)))
+        self.bind("<Control-Shift-Tab>", lambda event: self._shortcut(lambda: self.cycle_tab(-1)))
+        if sys.platform == "darwin":
+            self.bind("<Command-t>", lambda event: self._shortcut(self.new_tab))
+            self.bind("<Command-w>", lambda event: self._shortcut(lambda: self.close_tab(self.active_tab)))
+        self.protocol("WM_DELETE_WINDOW", lambda: self.close(confirm=True))
+        self.new_tab()
+
+    @staticmethod
+    def _shortcut(action):
+        action()
+        return "break"
+
+    def new_tab(self):
+        if self.closing:
+            return None
+        if self.active_tab and not self.active_tab.persist():
+            return None
+        tab = VideoTab(self, self.next_tab_number, self.data_dir)
+        self.next_tab_number += 1
+        self.tabs.append(tab)
+        holder = tk.Frame(self.tab_strip, bg="white", padx=1, pady=4)
+        holder.pack(side="left", padx=(0, 3), fill="y")
+        select = tk.Button(holder, text="", command=lambda: self.select_tab(tab), relief="flat",
+                           anchor="w", width=23, font=("Segoe UI", 10), padx=10)
+        select.pack(side="left", fill="y")
+        select.bind("<Double-Button-1>", lambda event: self.rename_tab(tab))
+        menu = tk.Menu(select, tearoff=False)
+        menu.add_command(label="Đổi tên tab…", command=lambda: self.rename_tab(tab))
+        menu.add_command(label="Đóng tab", command=lambda: self.close_tab(tab))
+        def show_menu(event):
+            try:
+                menu.tk_popup(event.x_root, event.y_root)
+            finally:
+                menu.grab_release()
+        select.bind("<Button-3>", show_menu)
+        close = tk.Button(holder, text="×", command=lambda: self.close_tab(tab), relief="flat",
+                          width=2, font=("Segoe UI", 13))
+        close.pack(side="right", fill="y")
+        self.tab_widgets[tab] = (holder, select, close)
+        self.select_tab(tab)
+        return tab
+
+    def update_tab(self, tab):
+        widgets = self.tab_widgets.get(tab)
+        if not widgets:
             return
-        if self.dim_save_timer:
-            self.after_cancel(self.dim_save_timer)
-            self.save_background_dim()
-        if self.settings_save_timer:
-            self.after_cancel(self.settings_save_timer)
-        if not self.save_user_settings():
+        state = "Đang đóng" if tab.closing else tab.job_state
+        caption = tab.tab_name + (" *" if tab.dirty else "")
+        if state:
+            caption += " · " + state
+        color = "white" if tab is self.active_tab else "#e7edef"
+        widgets[0].configure(bg=color)
+        widgets[1].configure(text=caption, bg=color, fg="#218c7c" if tab is self.active_tab else "#526170")
+        widgets[2].configure(bg=color)
+        if tab is self.active_tab:
+            self.title(f"{tab.tab_name} — Quiz Studio")
+
+    def rename_tab(self, tab, name=None):
+        if tab not in self.tabs or tab.closing:
+            return False
+        if name is None:
+            name = simpledialog.askstring("Đổi tên tab", "Tên tab mới:", initialvalue=tab.tab_name, parent=self)
+        if name is None:
+            return False
+        name = " ".join(name.split())
+        if not name or len(name) > 80:
+            messagebox.showwarning("Tên tab không hợp lệ", "Tên tab cần có từ 1 đến 80 ký tự.", parent=self)
+            return False
+        tab.tab_name = name
+        self.update_tab(tab)
+        return True
+
+    def select_tab(self, tab):
+        if tab not in self.tabs or self.closing:
             return
+        outgoing = self.active_tab
+        if outgoing is not tab:
+            if outgoing:
+                outgoing.stop_preview()
+                if outgoing.busy and not outgoing.job_exporting:
+                    outgoing.cancel.set()
+                outgoing.pack_forget()
+            self.active_tab = tab
+            tab.pack(fill="both", expand=True)
+            if not tab.busy:
+                tab.show_preview()
+            tab.refresh_background_library()
+            tab.refresh_branding_library()
+            tab.text.focus_set()
+        for item in self.tabs:
+            self.update_tab(item)
+        self.title(f"{tab.tab_name} — Quiz Studio")
+        self.update_idletasks()
+        holder = self.tab_widgets[tab][0]
+        left, right = holder.winfo_x(), holder.winfo_x() + holder.winfo_width()
+        view_left = self.tab_canvas.canvasx(0)
+        width = self.tab_canvas.winfo_width()
+        total = max(1, self.tab_strip.winfo_reqwidth())
+        if left < view_left:
+            self.tab_canvas.xview_moveto(left / total)
+        elif right > view_left + width:
+            self.tab_canvas.xview_moveto(max(0, right - width) / total)
+
+    def cycle_tab(self, direction):
+        if self.tabs:
+            self.select_tab(self.tabs[(self.tabs.index(self.active_tab) + direction) % len(self.tabs)])
+
+    def reserve_output(self, tab, path):
+        key = os.path.normcase(str(Path(path).resolve()))
+        if key in self.output_owners:
+            other = self.output_owners[key]
+            messagebox.showwarning("File đang được xuất",
+                f"{other.tab_name} đang xuất vào file này. Hãy chọn tên file khác.", parent=self)
+            return False
+        self.output_owners[key] = tab
+        tab.export_path = key
+        return True
+
+    def release_output(self, tab):
+        if self.output_owners.get(tab.export_path) is tab:
+            del self.output_owners[tab.export_path]
+        tab.export_path = None
+
+    def close_tab(self, tab, confirm=True):
+        if tab not in self.tabs or tab.closing:
+            return
+        if confirm and (tab.busy or tab.dirty):
+            reason = "Tab đang xử lý video. Đóng sẽ hủy tác vụ." if tab.busy else "Tab có nội dung chưa lưu JSON."
+            if not messagebox.askyesno("Đóng tab", reason + "\nBạn có muốn đóng tab này?", parent=self):
+                return
+        if not tab.persist():
+            return
+        tab.closing = True
+        tab.cancel_job()
+        self.update_tab(tab)
+        if not tab.busy:
+            self.finish_close_tab(tab)
+
+    def finish_close_tab(self, tab):
+        if tab not in self.tabs:
+            return
+        index = self.tabs.index(tab)
+        self.tabs.remove(tab)
+        self.release_output(tab)
+        self.tab_widgets.pop(tab)[0].destroy()
+        was_active = self.active_tab is tab
+        if was_active:
+            self.active_tab = None
+        tab.destroy()
+        if self.closing:
+            if not self.tabs:
+                self.destroy()
+        elif was_active:
+            if self.tabs:
+                self.select_tab(self.tabs[min(index, len(self.tabs) - 1)])
+            else:
+                self.new_tab()
+
+    def close(self, confirm=False):
+        if self.closing:
+            return
+        if confirm and any(tab.busy or tab.dirty for tab in self.tabs):
+            if not messagebox.askyesno("Đóng Quiz Studio",
+                    "Nội dung chưa lưu JSON sẽ mất và các tác vụ đang chạy sẽ bị hủy.\nĐóng tất cả tab?", parent=self):
+                return
+        # Save the selected tab last, so its settings become next launch's defaults.
+        ordered = [tab for tab in self.tabs if tab is not self.active_tab]
+        if self.active_tab:
+            ordered.append(self.active_tab)
+        if not all(tab.persist() for tab in ordered):
+            return
+        self.closing = True
+        for tab in list(self.tabs):
+            tab.closing = True
+            tab.cancel_job()
+            self.update_tab(tab)
+            if not tab.busy:
+                self.finish_close_tab(tab)
+
+    def destroy(self):
+        # Only the entire window owns shared CustomTkinter callbacks.
+        for child in list(self.winfo_children()):
+            child.destroy()
         for timer in self.tk.call("after", "info"):
             self.after_cancel(timer)
-        self.destroy()
+        super().destroy()
 
 
 if __name__ == "__main__":
     if "--self-check" in sys.argv:
         report = Path(sys.argv[sys.argv.index("--self-check") + 1])
         try:
-            app = App()
-            app.withdraw()
-            app.update_idletasks()
+            check_data = tempfile.TemporaryDirectory(prefix="quiz-self-check-")
+            host = App(data_dir=check_data.name)
+            host.withdraw()
+            host.update_idletasks()
+            app = host.active_tab
             assert len(app.rows) == 2 and app.show_preview()
             from content_types import DEFAULT_MODE, REGISTRY, sample_document
             from content_timeline import plan_item
@@ -627,8 +1018,17 @@ if __name__ == "__main__":
             assert str(app.folder_button.cget("state")) == "normal"
             ffmpeg = Renderer(app.settings()).ffmpeg
             assert Path(ffmpeg).is_file()
-            app.destroy()
-            report.write_text(json.dumps({"ok": True, "questions": 2, "default_mode": DEFAULT_MODE, "content_types": len(REGISTRY), "ffmpeg": ffmpeg, "progress_and_output_button": True}), encoding="utf-8")
+            second = host.new_tab()
+            second.brand.set("VIDEO 2")
+            assert second.brand.get() != app.brand.get()
+            assert second.events is not app.events and second.cancel is not app.cancel
+            host.select_tab(app)
+            host.close_tab(second, confirm=False)
+            assert host.active_tab is app and len(host.tabs) == 1
+            app.show_ending_preview()
+            host.close()
+            check_data.cleanup()
+            report.write_text(json.dumps({"ok": True, "questions": 2, "default_mode": DEFAULT_MODE, "content_types": len(REGISTRY), "ffmpeg": ffmpeg, "progress_and_output_button": True, "workspace_tabs": True}), encoding="utf-8")
         except Exception as error:
             report.write_text(json.dumps({"ok": False, "error": str(error)}), encoding="utf-8")
             sys.exit(1)

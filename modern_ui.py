@@ -48,20 +48,23 @@ def build_ui(app, saved):
             text_color=INK, progress_color=ACCENT, fg_color="#dfe5e9", button_color="white",
             button_hover_color="#f7fbfa", switch_width=32, switch_height=18).pack(anchor="w", pady=9)
 
-    app.voice = tk.StringVar(value="Việt • Google (HTTP)")
-    app.en_voice = tk.StringVar(value="English • Google (HTTP)")
-    app.dialogue_voice_a = tk.StringVar()
-    app.dialogue_voice_b = tk.StringVar()
-    app.rate, app.pitch, app.countdown = tk.IntVar(value=0), tk.IntVar(value=0), tk.IntVar(value=5)
-    app.resolution = tk.StringVar(value="1080 × 1920")
-    app.video_template = tk.StringVar(value="Tự động theo môn học")
-    app.brand = tk.StringVar(value="QUIZ STUDIO")
-    app.watermark_enabled = tk.BooleanVar(value=True)
-    app.read_options, app.speech = tk.BooleanVar(value=True), tk.BooleanVar(value=True)
-    app.read_explanation = tk.BooleanVar(value=True)
-    app.music_volume = tk.IntVar(value=12)
-    app.background_dim = tk.IntVar(value=saved["background_dim"])
-    app.selected, app.reveal = tk.IntVar(value=1), tk.BooleanVar(value=False)
+    app.voice = tk.StringVar(master=app, value="Việt • Google (HTTP)")
+    app.en_voice = tk.StringVar(master=app, value="English • Google (HTTP)")
+    app.dialogue_voice_a = tk.StringVar(master=app)
+    app.dialogue_voice_b = tk.StringVar(master=app)
+    app.rate, app.pitch, app.countdown = tk.IntVar(master=app, value=0), tk.IntVar(master=app, value=0), tk.IntVar(master=app, value=5)
+    app.resolution = tk.StringVar(master=app, value="1080 × 1920")
+    app.video_template = tk.StringVar(master=app, value="Tự động theo môn học")
+    app.brand = tk.StringVar(master=app, value="QUIZ STUDIO")
+    app.ending_text = tk.StringVar(master=app)
+    app.watermark_enabled = tk.BooleanVar(master=app, value=True)
+    app.left_logo_enabled = tk.BooleanVar(master=app, value=True)
+    app.right_chibi_enabled = tk.BooleanVar(master=app, value=True)
+    app.read_options, app.speech = tk.BooleanVar(master=app, value=True), tk.BooleanVar(master=app, value=True)
+    app.read_explanation = tk.BooleanVar(master=app, value=True)
+    app.music_volume = tk.IntVar(master=app, value=12)
+    app.background_dim = tk.IntVar(master=app, value=saved["background_dim"])
+    app.selected, app.reveal = tk.IntVar(master=app, value=1), tk.BooleanVar(master=app, value=False)
     for name, default in USER_DEFAULTS.items():
         getattr(app, name).set(saved.get(name, default))
 
@@ -89,7 +92,7 @@ def build_ui(app, saved):
     foot.pack(fill="x", padx=28, pady=12)
     app.folder_button = button(foot, "Mở trong thư mục", app.open_output_folder, symbol="folder", width=166, state="disabled")
     app.folder_button.pack(side="right", padx=(12, 0))
-    button(foot, "Hủy tác vụ", app.cancel.set, symbol="x", width=112).pack(side="right", padx=(12, 0))
+    button(foot, "Hủy tác vụ", app.cancel_job, symbol="x", width=112).pack(side="right", padx=(12, 0))
     app.progress_label = ttk.Label(foot, text="0%", width=6)
     app.progress_label.pack(side="right", padx=12)
     area = box(foot)
@@ -203,6 +206,52 @@ def build_ui(app, saved):
         fg_color="white", text_color=INK, border_color=LINE, font=("Segoe UI", 12))
     app.watermark_entry.pack(fill="x")
     label(video, "Tắt để ẩn cả chữ và khung watermark.", 10, MUTED, wraplength=220).pack(anchor="w", pady=10)
+    divider(video)
+    app.branding_labels = {}
+    app.branding_library_boxes = {}
+    for kind, caption, choose_text in (
+        ("logo_image", "Logo chìm", "Chọn ảnh logo"),
+        ("left_logo_image", "Logo góc trái", "Chọn logo góc trái"),
+        ("right_chibi_image", "Ảnh chibi góc phải", "Chọn ảnh chibi góc phải"),
+        ("ending_image", "Ảnh cuối video", "Chọn ảnh cuối video"),
+    ):
+        section(video, caption)
+        if kind in ("left_logo_image", "right_chibi_image"):
+            variable = app.left_logo_enabled if kind == "left_logo_image" else app.right_chibi_enabled
+            toggle(video, "Hiện " + caption.lower(), variable, app.show_preview)
+        current = label(video, getattr(app, kind + "_name") or "Đang dùng ảnh mặc định",
+                        11, MUTED, wraplength=220, justify="left")
+        current.pack(anchor="w", pady=(4, 8))
+        app.branding_labels[kind] = current
+        button(video, choose_text, lambda selected_kind=kind: app.choose_branding(selected_kind),
+               symbol="image").pack(fill="x", pady=(0, 6))
+        label(video, "Ảnh đã tải lên", 10, MUTED).pack(anchor="w", pady=(6, 4))
+        picker = ttk.Combobox(video, state="readonly", width=24)
+        picker.pack(fill="x", pady=(0, 6))
+        app.branding_library_boxes[kind] = picker
+        button(video, "Dùng ảnh đã chọn", lambda selected_kind=kind: app.choose_saved_branding(selected_kind)).pack(fill="x", pady=(0, 6))
+        button(video, "Dùng ảnh mặc định", lambda selected_kind=kind: app.reset_branding(selected_kind)).pack(fill="x", pady=(0, 6))
+        if kind == "logo_image":
+            label(video, "Logo mờ phía sau nội dung. Hai ảnh ở đầu video có tùy chọn riêng bên dưới.",
+                  10, MUTED, wraplength=220, justify="left").pack(anchor="w", pady=(0, 6))
+        elif kind == "ending_image":
+            button(video, "Xem trước ảnh kết thúc", app.show_ending_preview, symbol="play").pack(fill="x", pady=(0, 6))
+    label(video, "Ảnh được sao chép và tự lưu cho lần mở sau. Mỗi tab có lựa chọn riêng.",
+          10, MUTED, wraplength=220, justify="left").pack(anchor="w", pady=(4, 10))
+    button(video, "Làm mới thư viện ảnh", app.refresh_branding_library).pack(fill="x", pady=(0, 6))
+    button(video, "Mở thư mục ảnh đã tải", app.open_branding_library_folder, symbol="folder").pack(fill="x", pady=(0, 6))
+    app.refresh_branding_library()
+    divider(video)
+    section(video, "Câu kết cuối video")
+    app.ending_text_entry = ctk.CTkEntry(video, textvariable=app.ending_text, height=36,
+        corner_radius=6, fg_color="white", text_color=INK, border_color=LINE, font=("Segoe UI", 12))
+    app.ending_text_entry.pack(fill="x", pady=(4, 8))
+    label(video, "Nhập lời đọc khi hiện ảnh kết thúc. Để trống để không đọc câu kết. Cần bật Tạo giọng đọc. Dùng [en]…[/en] cho đoạn tiếng Anh.",
+          10, MUTED, wraplength=220, justify="left").pack(anchor="w", pady=(0, 8))
+    button(video, "Nghe thử câu kết", lambda: app.play_preview(ending_only=True), symbol="speaker").pack(fill="x", pady=(0, 6))
+    button(video, "Dùng câu kết mặc định", lambda: app.ending_text.set(USER_DEFAULTS["ending_text"])).pack(fill="x", pady=(0, 6))
+    app.ending_text.trace_add("write", lambda *args: app.stop_preview())
+    divider(video)
     combo(video, "Độ phân giải", app.resolution, ["1080 × 1920", "720 × 1280"])
     format_card = box(video, BG, corner_radius=7)
     format_card.pack(fill="x", pady=18)

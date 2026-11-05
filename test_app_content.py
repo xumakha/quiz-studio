@@ -11,8 +11,9 @@ from content_types import DEFAULT_MODE, LABELS, sample_document
 class AppContentTests(unittest.TestCase):
     def test_drafts_forms_import_and_abcd_on_reopen(self):
         with tempfile.TemporaryDirectory() as directory:
-            app = App(data_dir=directory)
-            app.withdraw()
+            host = App(data_dir=directory)
+            host.withdraw()
+            app = host.active_tab
             try:
                 app.speech.set(False)
                 self.assertEqual(app.content_editor.mode, DEFAULT_MODE)
@@ -58,14 +59,15 @@ class AppContentTests(unittest.TestCase):
                 editor.variable.set(LABELS["mixed"]); editor.switch()
                 self.assertEqual(editor.source(), '{"invalid":')
             finally:
-                app.close()
-            app = App(data_dir=directory)
-            app.withdraw()
+                host.close()
+            host = App(data_dir=directory)
+            host.withdraw()
+            app = host.active_tab
             try:
                 self.assertEqual(app.content_editor.mode, DEFAULT_MODE)
                 self.assertTrue(all(row["type"] == DEFAULT_MODE for row in app.rows))
             finally:
-                app.close()
+                host.close()
 
 
 if __name__ == "__main__":

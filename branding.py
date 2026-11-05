@@ -2,7 +2,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 CONTENT_OFFSET_Y = 96
 CONTENT_MARGIN_X = 80
@@ -21,10 +21,10 @@ def compose_content(background, content, settings):
         (settings.width, settings.height), Image.Resampling.LANCZOS)
 
 
-@lru_cache(maxsize=4)
-def _logo(width, height, opacity):
-    with Image.open(Path(__file__).resolve().parent / "assets" / "logo-mce.png") as source:
-        logo = source.convert("RGBA")
+@lru_cache(maxsize=32)
+def _logo(width, height, opacity, path=""):
+    with Image.open(path or Path(__file__).resolve().parent / "assets" / "logo-mce.png") as source:
+        logo = ImageOps.exif_transpose(source).convert("RGBA")
     bounds = logo.getbbox()
     if bounds:
         logo = logo.crop(bounds)
@@ -33,10 +33,10 @@ def _logo(width, height, opacity):
     return logo
 
 
-@lru_cache(maxsize=1)
-def _character():
-    with Image.open(Path(__file__).resolve().parent / "assets" / "chibi.png") as source:
-        character = source.convert("RGBA")
+@lru_cache(maxsize=16)
+def _character(path=""):
+    with Image.open(path or Path(__file__).resolve().parent / "assets" / "chibi.png") as source:
+        character = ImageOps.exif_transpose(source).convert("RGBA")
     bounds = character.getbbox()
     if bounds:
         character = character.crop(bounds)
@@ -44,16 +44,21 @@ def _character():
     return character
 
 
-def add_logo(image, *, watermark=False):
+def add_logo(image, *, watermark=False, logo_image="", settings=None):
     """Place branding on the 1080 x 1920 design canvas."""
-    logo = _logo(800, 800, 0.07) if watermark else _logo(132, 118, 1.0)
-    position = ((image.width - logo.width) // 2, (image.height - logo.height) // 2) if watermark else (CONTENT_MARGIN_X, 48)
-    if image.mode == "RGBA":
-        # Preserve the logo alpha: paste with a mask would apply opacity twice
-        # when this transparent layer is later composited onto the background.
-        image.alpha_composite(logo, position)
-    else:
-        image.paste(logo, position, logo)
-    if not watermark:
-        character = _character()
-        image.paste(character, (image.width - character.width - CONTENT_MARGIN_X, 48), character)
+    def composite(asset, position):
+        if image.mode == "RGBA":
+            image.alpha_composite(asset, position)
+        else:
+            image.paste(asset, position, asset)
+
+    if watermark:
+        logo = _logo(800, 800, 0.07, logo_image)
+        composite(logo, ((image.width - logo.width) // 2, (image.height - logo.height) // 2))
+        return
+    if settings is None or settings.left_logo_enabled:
+        path = logo_image if settings is None else settings.left_logo_image
+        composite(_logo(132, 118, 1.0, path), (CONTENT_MARGIN_X, 48))
+    if settings is None or settings.right_chibi_enabled:
+        character = _character("" if settings is None else settings.right_chibi_image)
+        composite(character, (image.width - character.width - CONTENT_MARGIN_X, 48))

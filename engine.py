@@ -17,6 +17,7 @@ import edge_tts.communicate
 import imageio_ffmpeg
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from gtts import gTTS
+from content_timeline import DEFAULT_ENDING_TEXT
 
 # Retain certificate verification and additionally trust the OS certificate store
 # (necessary on Windows networks using an installed corporate root CA).
@@ -93,6 +94,13 @@ class Settings:
     speech: bool = True
     brand: str = "QUIZ STUDIO"
     watermark_enabled: bool = True
+    logo_image: str = ""
+    ending_image: str = ""
+    ending_text: str = DEFAULT_ENDING_TEXT
+    left_logo_enabled: bool = True
+    right_chibi_enabled: bool = True
+    left_logo_image: str = ""
+    right_chibi_image: str = ""
     template: str = "auto"
     background: str = ""
     background_dim: int = 12
@@ -336,10 +344,10 @@ class Renderer:
                     segments.append(video)
                     question_frames += math.ceil(duration * 30)
                     update(f"{prefix}: {scene.label or scene.phase} ({duration:.1f}s)", increment=1)
-            update("Tạo giọng kêu gọi theo dõi…")
+            update("Chuẩn bị câu kết cuối video…")
             from content_timeline import ending_scene, prepare_scene
             from content_renderer import render_ending
-            prepared = prepare_scene(self, ending_scene(), directory, "ending", len(rows))
+            prepared = prepare_scene(self, ending_scene(settings), directory, "ending", len(rows))
             audio, duration = prepared.audio, prepared.seconds
             picture = directory / "ending.png"
             render_ending(settings).save(picture)

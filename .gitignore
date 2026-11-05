@@ -23,3 +23,7 @@ outputs/
 
 .venv-macos/
 release-macos/
+release-tabs/
+release-outro/
+release-corners/
+build-tabs/

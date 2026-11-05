@@ -13,7 +13,7 @@ class ContentEditor:
         self.app = app
         self.mode = DEFAULT_MODE
         self.drafts = {}
-        self.variable = tk.StringVar(value=LABELS[DEFAULT_MODE])
+        self.variable = tk.StringVar(master=app, value=LABELS[DEFAULT_MODE])
         area = box(parent, BG, corner_radius=8, border_width=1, border_color=LINE)
         area.pack(fill="x", padx=18, pady=(16, 4))
         choice_row = box(area)
@@ -140,10 +140,10 @@ class ContentEditor:
             window.title("Thêm nội dung")
             window.geometry("420x240")
             window.configure(fg_color=BG)
-            window.transient(self.app)
+            window.transient(self.app.winfo_toplevel())
             label(window, "Thêm nội dung", 20, bold=True).pack(anchor="w", padx=24, pady=(24, 4))
             label(window, "Chọn dạng cho nội dung mới trong video tổng hợp.", 12, MUTED).pack(anchor="w", padx=24, pady=(0, 16))
-            choice = tk.StringVar(value=LABELS[DEFAULT_MODE])
+            choice = tk.StringVar(master=window, value=LABELS[DEFAULT_MODE])
             dropdown(window, choice, [s.label for s in REGISTRY.values()]).pack(fill="x", padx=24)
             def confirm():
                 append(next(k for k, s in REGISTRY.items() if s.label == choice.get()))
@@ -181,7 +181,7 @@ class ContentEditor:
         window.geometry("760x780")
         window.minsize(560, 540)
         window.configure(fg_color=BG)
-        window.transient(self.app)
+        window.transient(self.app.winfo_toplevel())
         heading = box(window, "white", corner_radius=0)
         heading.pack(fill="x")
         label(heading, f"Chỉnh nội dung {index+1}", 21, bold=True).pack(anchor="w", padx=24, pady=(20, 3))
@@ -200,10 +200,10 @@ class ContentEditor:
         label(body, "THÔNG TIN VIDEO", 10, MUTED, True).pack(anchor="w", padx=10, pady=(4, 8))
         general = box(body, "white", corner_radius=8, border_width=1, border_color=LINE)
         general.pack(fill="x", padx=10, pady=(0, 18))
-        title = tk.StringVar(value=doc.get("title", ""))
+        title = tk.StringVar(master=window, value=doc.get("title", ""))
         label(general, "Tiêu đề video", 12, bold=True).pack(anchor="w", padx=14, pady=(14, 6))
         entry(general, title).pack(fill="x", padx=14)
-        global_seconds = tk.StringVar(value=str(doc.get("settings", {}).get("thinking_seconds", self.app.countdown.get())))
+        global_seconds = tk.StringVar(master=window, value=str(doc.get("settings", {}).get("thinking_seconds", self.app.countdown.get())))
         timing = box(general)
         timing.pack(fill="x", padx=14, pady=14)
         label(timing, "Thời gian suy nghĩ chung", 12).pack(side="left")

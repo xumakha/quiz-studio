@@ -16,7 +16,7 @@ def ipa_font(size):
 
 def render_ending(settings):
     from pathlib import Path
-    with Image.open(Path(__file__).resolve().parent / "assets" / "ending-img.png") as source:
+    with Image.open(settings.ending_image or Path(__file__).resolve().parent / "assets" / "ending-img.png") as source:
         artwork = ImageOps.exif_transpose(source).convert("RGB")
         return ImageOps.pad(artwork, (settings.width, settings.height), method=Image.Resampling.LANCZOS,
                             color=artwork.getpixel((0, 0)))
@@ -36,7 +36,7 @@ def render_scene(row, scene, number, total, title, settings):
     background_image = image
     image = Image.new("RGBA", background_image.size)
     if settings.watermark_enabled:
-        add_logo(image, watermark=True)
+        add_logo(image, watermark=True, logo_image=settings.logo_image)
     draw = ImageDraw.Draw(image)
     margin = CONTENT_MARGIN_X
     def block(text, y, height, size=58, color="#112c50", background=None, highlight=None, field="nội dung", left=margin, right=1080-margin, align="center", bold=True):
@@ -163,7 +163,7 @@ def render_scene(row, scene, number, total, title, settings):
             draw.rounded_rectangle((margin+30, 1344, margin+30+(920-60)*fraction, 1356), radius=6, fill="#3887bb")
     if settings.watermark_enabled:
         block(settings.brand, 1400, 76, 30)
-    add_logo(image)
+    add_logo(image, settings=settings)
     return compose_content(background_image, image, settings)
 
 

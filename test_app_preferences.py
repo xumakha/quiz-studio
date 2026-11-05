@@ -18,12 +18,13 @@ class AppBackgroundTests(unittest.TestCase):
             Renderer(Settings()).run([
                 "-f", "lavfi", "-i", "testsrc2=size=180x320:rate=30:duration=0.7",
                 "-c:v", "libx264", "-pix_fmt", "yuv420p", source])
-            app = App(data_dir=root / "data")
-            app.withdraw()
+            host = App(data_dir=root / "data")
+            host.withdraw()
+            app = host.active_tab
             def pump(seconds):
                 deadline = time.monotonic() + seconds
                 while time.monotonic() < deadline:
-                    app.update()
+                    host.update()
                     time.sleep(0.02)
             try:
                 pump(0.1)
@@ -56,7 +57,7 @@ class AppBackgroundTests(unittest.TestCase):
                 self.assertFalse(current.thread.is_alive())
                 self.assertIsNone(app.background_preview_reader)
             finally:
-                app.close()
+                host.close()
 
     def test_selection_survives_close_and_reopen(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -72,10 +73,12 @@ class AppBackgroundTests(unittest.TestCase):
                       "rate": 25, "pitch": -10, "countdown": 9, "resolution": "720 × 1280",
                       "video_template": "Tiếng Anh · Xanh sáng", "brand": "Mọt Chữ English",
                       "watermark_enabled": False, "read_options": False, "read_explanation": False, "speech": False,
-                      "music_volume": 27, "reveal": True}
+                      "music_volume": 27, "reveal": True, "ending_text": "Cảm ơn bạn đã xem, hẹn gặp lại!",
+                      "left_logo_enabled": False, "right_chibi_enabled": False}
             self.assertEqual(set(chosen), set(USER_DEFAULTS))
-            app = App(data_dir=root / "data")
-            app.withdraw()
+            host = App(data_dir=root / "data")
+            host.withdraw()
+            app = host.active_tab
             try:
                 with patch("app.filedialog.askopenfilename", return_value=str(source)):
                     app.choose_media("background")
@@ -94,15 +97,16 @@ class AppBackgroundTests(unittest.TestCase):
                 # Changes are saved while the app stays open, not only on exit.
                 app.rate.set(26)
                 chosen["rate"] = 26
-                app.after(450, app.quit)
-                app.mainloop()
+                host.after(450, host.quit)
+                host.mainloop()
                 self.assertEqual(UserSettingsStore(root / "data").load()["rate"], 26)
             finally:
-                app.close()
+                host.close()
             source.unlink()
             music.unlink()
-            app = App(data_dir=root / "data")
-            app.withdraw()
+            host = App(data_dir=root / "data")
+            host.withdraw()
+            app = host.active_tab
             try:
                 self.assertEqual(app.background, selected)
                 self.assertEqual(app.background_dim.get(), 8)
@@ -117,15 +121,16 @@ class AppBackgroundTests(unittest.TestCase):
                 self.assertFalse(app.settings().read_explanation)
                 app.clear_media()
             finally:
-                app.close()
-            app = App(data_dir=root / "data")
-            app.withdraw()
+                host.close()
+            host = App(data_dir=root / "data")
+            host.withdraw()
+            app = host.active_tab
             try:
                 self.assertEqual(app.background, "")
                 self.assertEqual(app.music, "")
                 self.assertEqual(app.music_volume.get(), 27)
             finally:
-                app.close()
+                host.close()
 
 
 if __name__ == "__main__":
