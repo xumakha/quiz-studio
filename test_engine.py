@@ -149,8 +149,8 @@ class EngineTests(unittest.TestCase):
                         for phase in [{}, {"reveal": True}, {"countdown": 3}]:
                             with self.subTest(theme=theme, count=count, width=width, phase=phase):
                                 picture = frame(rows[0], 1, 1, "18 CÂU ĐỐ TIẾNG ANH", settings, **phase)
-                                # Keep the lower 18% clear after moving content down for mobile UI.
-                                bottom = picture.crop((0, round(height * .82), width, height))
+                                # Leave the lower 14% clear below the text and small footer logo.
+                                bottom = picture.crop((0, round(height * .86), width, height))
                                 self.assertEqual(bottom.tobytes(), Image.new("RGB", bottom.size, color).tobytes())
                                 top = picture.crop((0, 0, width, round(height * .065)))
                                 self.assertEqual(top.tobytes(), Image.new("RGB", top.size, color).tobytes())
@@ -180,7 +180,7 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(detect_template({"subject": "English"}, selected="math"), "math")
     def test_watermark_toggle_removes_the_entire_footer(self):
         title, rows = parse_questions(Path("examples/questions.json").read_text(encoding="utf-8"))
-        area = (0, 1420 + CONTENT_OFFSET_Y, 1080, 1470 + CONTENT_OFFSET_Y)
+        area = (0, 1410 + CONTENT_OFFSET_Y, 1080, 1550 + CONTENT_OFFSET_Y)
         disabled = frame(rows[0], 1, 2, title, Settings(watermark_enabled=False)).crop(area)
         blank = frame(rows[0], 1, 2, title, Settings(brand=" ")).crop(area)
         self.assertEqual(disabled.tobytes(), blank.tobytes())

@@ -1,5 +1,7 @@
 # Đoán từ qua nghĩa tiếng Việt
 
+Watermark chữ ở đáy video dùng cỡ 42 px trên khung 1080 px, chữ đậm và nét dày hơn; tên dài tự co để vừa khung. Ngay dưới chữ có logo nhỏ căn giữa, dùng cùng ảnh đã chọn trong mục Logo chìm nhưng hiện rõ màu gốc, không làm mờ. Logo giữ đúng tỷ lệ, vừa khung tối đa 240 × 64 px; tắt watermark ở đáy sẽ ẩn cả chữ và logo nhỏ. Thanh đếm ngược thu ngắn liên tục ở 30 fps, trong khi số giây vẫn đổi mỗi giây. Phát xem trước và tua đến giữa giây cũng hiển thị đúng phần thời gian còn lại.
+
 App mở sẵn ba tab **Một chút English**, **Easy Prep**, **ASVAB-Prep** và chọn tab đầu tiên. Giọng đọc, nền, nhạc, logo, ảnh kết thúc và các tùy chỉnh được lưu riêng cho từng tab, tự khôi phục khi mở lại app. Cài đặt từ bản cũ được giữ cho **Một chút English**; hai tab còn lại dùng thông số cơ bản, chữ watermark theo tên tab và câu kết để trống cho đến khi bạn tùy chỉnh.
 
 Bấm **+** hoặc **Ctrl+T** để thêm tab; tab mới sao chép cài đặt tab đang chọn rồi lưu độc lập. Tên và các tab còn mở được nhớ cho lần sau. Đóng tab mặc định chỉ ẩn trong phiên hiện tại; mở lại app sẽ khôi phục cả ba với cài đặt đã lưu. Tab mở thêm đã đóng sẽ không tự mở lại. JSON và bản nháp vẫn chỉ giữ trong phiên, cần **Lưu JSON** để giữ nội dung. Mở `Mo-QuizStudio.bat` để chạy bản mới tại `release-corners/QuizStudio/QuizStudio.exe`. Xem [hướng dẫn nhiều tab](../README.md#tạo-video).

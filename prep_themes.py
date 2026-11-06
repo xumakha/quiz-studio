@@ -1,7 +1,7 @@
 """Exam, military and computing layouts on the shared portrait canvas."""
 from PIL import Image, ImageDraw, ImageOps
 from background_media import open_background
-from branding import CONTENT_MARGIN_X, add_branding, compose_content
+from branding import CONTENT_MARGIN_X, add_branding, compose_content, draw_text_watermark
 
 
 PALETTES = {
@@ -11,7 +11,7 @@ PALETTES = {
 }
 
 
-def render_frame(row, number, total, title, settings, reveal=False, countdown=None):
+def render_frame(row, number, total, title, settings, reveal=False, countdown=None, countdown_remaining=None):
     from engine import fitted, font, draw_option_text
     from video_themes import detect_template
     from content_timeline import thinking_seconds
@@ -62,10 +62,10 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
         text(f"{countdown:02d} SEC", (left+24, 1180, left+260, 1252), 42, accent)
         text("CHOOSE YOUR ANSWER", (left+290, 1194, right-24, 1242), 28, muted)
         draw.rounded_rectangle((left+24, 1280, right-24, 1292), 6, fill=palette["soft"])
-        fraction = max(0, min(1, countdown/max(1, thinking_seconds(row, settings))))
+        remaining = countdown if countdown_remaining is None else countdown_remaining
+        fraction = max(0, min(1, remaining/max(1, thinking_seconds(row, settings))))
         if fraction:
             draw.rounded_rectangle((left+24, 1280, left+24+(right-left-48)*fraction, 1292), 6, fill=accent)
-    if settings.watermark_enabled and settings.brand.strip():
-        text(settings.brand, (left, 1420, right, 1470), 27, muted)
+    draw_text_watermark(draw, settings, ink, align="left")
     add_branding(image, settings)
     return compose_content(background, image, settings)

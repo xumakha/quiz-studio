@@ -8,6 +8,24 @@ CONTENT_OFFSET_Y = 96
 CONTENT_MARGIN_X = 80
 
 
+def draw_text_watermark(draw, settings, color, background=None, align="center", radius=15):
+    """Keep the footer bold and readable within the mobile-safe content area."""
+    from engine import fitted, plain
+    if not settings.watermark_enabled or not plain(settings.brand).strip():
+        return
+    left, top, right, bottom = CONTENT_MARGIN_X, 1410, 1080-CONTENT_MARGIN_X, 1470
+    if background is not None:
+        draw.rounded_rectangle((left, top, right, bottom), radius, fill=background)
+    face, lines, _ = fitted(draw, settings.brand, 42, right-left-62, bottom-top-4, True)
+    text = "\n".join(lines)
+    bounds = draw.multiline_textbbox((0, 0), text, font=face, spacing=12, align=align, stroke_width=1)
+    width, height = bounds[2]-bounds[0], bounds[3]-bounds[1]
+    x = left+30-bounds[0] if align == "left" else (left+right-width)/2-bounds[0]
+    y = (top+bottom-height)/2-bounds[1]
+    draw.multiline_text((x, y), text, font=face, fill=color, spacing=12, align=align,
+                        stroke_width=1, stroke_fill=color)
+
+
 def compose_content(background, content, settings):
     """Keep the background fixed while moving all video elements below mobile UI."""
     if settings.background_overlay:
@@ -75,3 +93,11 @@ def add_branding(image, settings):
     if enabled:
         add_logo(image, watermark=True, logo_image=settings.logo_image)
     add_logo(image, settings=settings)
+    if settings.watermark_enabled and settings.brand.strip():
+        # Repeat the selected watermark artwork at full opacity for recognition.
+        logo = _logo(240, 64, 1.0, settings.logo_image, upscale=True)
+        position = ((image.width-logo.width)//2, 1482)
+        if image.mode == "RGBA":
+            image.alpha_composite(logo, position)
+        else:
+            image.paste(logo, position, logo)

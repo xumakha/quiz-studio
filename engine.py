@@ -159,7 +159,7 @@ def draw_option_text(draw, text, rectangle, size, color):
     draw.multiline_text((x, y), content, font=face, fill=color, spacing=12, align="center")
 
 
-def frame(row, number, total, title, settings, reveal=False, countdown=None):
+def frame(row, number, total, title, settings, reveal=False, countdown=None, countdown_remaining=None):
     from content_timeline import plan_item
     from content_renderer import render_scene
     scenes = plan_item(row, settings)
@@ -171,7 +171,7 @@ def frame(row, number, total, title, settings, reveal=False, countdown=None):
             scene = replace(scene, countdown=countdown)
     else:
         scene = scenes[0]
-    return render_scene(row, scene, number, total, title, settings)
+    return render_scene(row, scene, number, total, title, settings, countdown_remaining)
 
 
 
@@ -362,7 +362,7 @@ class Renderer:
         h, m, s = map(float, match.groups())
         return h * 3600 + m * 60 + s
 
-    def segment(self, image, output, seconds, audio=None, background_offset=None):
+    def segment(self, image, output, seconds, audio=None, background_offset=None, animation=None):
         # Match PCM samples to the exact video-frame duration. Encoding AAC for
         # every segment adds encoder priming/padding at each countdown join.
         frames = math.ceil(seconds * 30)
@@ -370,14 +370,33 @@ class Renderer:
         args = ["-loop", "1", "-framerate", "30", "-i", image]
         args += ["-i", audio] if audio else ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo"]
         video_map = "0:v:0"
-        filters = ["-vf", "format=yuv420p"]
+        graph = []
+        content = "0:v"
+        background_input = 2
+        if animation is not None and animation.bounds:
+            patches = Path(output).with_suffix("")
+            patches.mkdir()
+            for index in range(frames):
+                self.check()
+                animation.patch(index / 30).save(patches / f"{index:03d}.png")
+            args += ["-framerate", "30", "-i", patches / "%03d.png"]
+            left, top, _, _ = animation.bounds
+            graph.append(f"[0:v][2:v]overlay=x={left}:y={top}:shortest=1:format=auto[content]")
+            content = "content"
+            background_input = 3
         if background_offset is not None:
             args += ["-stream_loop", "-1", "-ss", f"{background_offset:.9f}", "-i", self.settings.background]
-            filters = ["-filter_complex",
-                       f"[2:v]setpts=PTS-STARTPTS,scale={self.settings.width}:{self.settings.height}:"
-                       f"force_original_aspect_ratio=increase,crop={self.settings.width}:{self.settings.height},"
-                       "setsar=1,fps=30[bg];[bg][0:v]overlay=shortest=1,format=yuv420p[v]"]
+            graph += [f"[{background_input}:v]setpts=PTS-STARTPTS,scale={self.settings.width}:{self.settings.height}:"
+                      f"force_original_aspect_ratio=increase,crop={self.settings.width}:{self.settings.height},"
+                      "setsar=1,fps=30[bg]",
+                      f"[bg][{content}]overlay=shortest=1,format=yuv420p[v]"]
+        elif graph:
+            graph.append(f"[{content}]format=yuv420p[v]")
+        if graph:
+            filters = ["-filter_complex", ";".join(graph)]
             video_map = "[v]"
+        else:
+            filters = ["-vf", "format=yuv420p"]
         self.run([*args, "-t", f"{frames / 30:.9f}", *filters, "-af",
                   f"aresample=44100,apad,atrim=end_sample={samples},asetpts=N/SR/TB",
                   "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-r", "30",
@@ -419,15 +438,25 @@ class Renderer:
                     prepared = prepare_scene(self, scene, directory, f"{number}-{scene_index}", number)
                     duration, audio = prepared.seconds, prepared.audio
                     picture = directory / f"{number}-{scene_index}.png"
+                    from content_timeline import thinking_seconds
+                    seconds = thinking_seconds(row, settings) if scene.countdown is not None else None
                     if row.get("type", "multiple_choice") == "multiple_choice":
-                        frame(row, number, len(rows), title, settings, reveal=scene.phase == "answer", countdown=scene.countdown).save(picture)
+                        artwork = frame(row, number, len(rows), title, settings, reveal=scene.phase == "answer",
+                                        countdown=scene.countdown, countdown_remaining=seconds)
                     else:
-                        render_scene(row, scene, number, len(rows), title, settings).save(picture)
+                        artwork = render_scene(row, scene, number, len(rows), title, settings, countdown_remaining=seconds)
+                    options = {}
+                    if scene.countdown is not None:
+                        from countdown_animation import CountdownAnimation
+                        empty = render_scene(row, scene, number, len(rows), title, settings, countdown_remaining=0)
+                        animation = CountdownAnimation(artwork, empty, scene.countdown, seconds)
+                        artwork = animation.base_frame()
+                        options["animation"] = animation
+                    artwork.save(picture)
                     video = picture.with_suffix(".mov")
                     if settings.background_overlay:
-                        self.segment(picture, video, duration, audio, background_offset=question_frames / 30)
-                    else:
-                        self.segment(picture, video, duration, audio)
+                        options["background_offset"] = question_frames / 30
+                    self.segment(picture, video, duration, audio, **options)
                     segments.append(video)
                     question_frames += math.ceil(duration * 30)
                     update(f"{prefix}: {scene.label or scene.phase} ({duration:.1f}s)", increment=1)

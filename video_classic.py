@@ -3,10 +3,10 @@ from background_media import open_background
 import math
 import re
 from PIL import Image, ImageDraw, ImageOps
-from branding import CONTENT_MARGIN_X, add_branding, compose_content
+from branding import CONTENT_MARGIN_X, add_branding, compose_content, draw_text_watermark
 
 
-def render_frame(row, number, total, title, settings, reveal=False, countdown=None):
+def render_frame(row, number, total, title, settings, reveal=False, countdown=None, countdown_remaining=None):
     from engine import draw_option_text, fitted, font, plain
     ink, blue = "#28323d", "#147af4"
     image = Image.new("RGB", (1080, 1920), "#319fe9")
@@ -88,11 +88,10 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
         draw.text((content_left+207, 1201), "BẠN CHỌN ĐÁP ÁN NÀO?", font=font(34, True), fill=ink)
         draw.rounded_rectangle((content_left+207, 1268, content_right-75, 1284), 8, fill="#dfeaf5")
         from content_timeline import thinking_seconds
-        fraction = max(0, min(1, countdown / max(1, thinking_seconds(row, settings))))
+        remaining = countdown if countdown_remaining is None else countdown_remaining
+        fraction = max(0, min(1, remaining / max(1, thinking_seconds(row, settings))))
         if fraction:
             draw.rounded_rectangle((content_left+207, 1268, content_left+207+(content_right-content_left-282)*fraction, 1284), 8, fill=blue)
-    if settings.watermark_enabled and settings.brand.strip():
-        draw.rounded_rectangle((content_left, 1420, content_right, 1470), 20, fill=(255, 255, 255, 225))
-        centered(settings.brand, (content_left+30, 1428, content_right-30, 1462), 27, "#526d83")
+    draw_text_watermark(draw, settings, ink, background=(255, 255, 255, 225), radius=20)
     add_branding(image, settings)
     return compose_content(background, image, settings)

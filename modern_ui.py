@@ -221,7 +221,7 @@ def build_ui(app, saved):
     app.watermark_entry = ctk.CTkEntry(video, textvariable=app.brand, height=36, corner_radius=6,
         fg_color="white", text_color=INK, border_color=LINE, font=("Segoe UI", 12))
     app.watermark_entry.pack(fill="x")
-    label(video, "Tắt để ẩn cả chữ và khung watermark.", 10, MUTED, wraplength=220).pack(anchor="w", pady=10)
+    label(video, "Tắt để ẩn chữ watermark và logo nhỏ bên dưới.", 10, MUTED, wraplength=220).pack(anchor="w", pady=10)
     divider(video)
     app.branding_labels = {}
     app.branding_library_boxes = {}

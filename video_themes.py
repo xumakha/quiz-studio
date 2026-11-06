@@ -4,7 +4,7 @@ import math
 import re
 import unicodedata
 from PIL import Image, ImageDraw, ImageOps
-from branding import CONTENT_MARGIN_X, add_branding, compose_content
+from branding import CONTENT_MARGIN_X, add_branding, compose_content, draw_text_watermark
 
 TEMPLATES = {"Tự động theo môn học": "auto", "Một chút English · Học ngôn ngữ": "english",
              "Luyện thi · Chứng chỉ": "exam", "Quân sự · ASVAB": "military", "Tin học · Công nghệ": "tech",
@@ -34,15 +34,15 @@ def detect_template(row, title="", selected="auto"):
     text = str(row.get("question", ""))+" ".join(row.get("options", []))
     return "english" if "[en]" in text.lower() else "classic"
 
-def render_frame(row, number, total, title, settings, reveal=False, countdown=None):
+def render_frame(row, number, total, title, settings, reveal=False, countdown=None, countdown_remaining=None):
     from engine import draw_option_text, fitted, font
     theme = detect_template(row, title, settings.template)
     if theme in ("exam", "military", "tech"):
         from prep_themes import render_frame as prep
-        return prep(row, number, total, title, settings, reveal, countdown)
+        return prep(row, number, total, title, settings, reveal, countdown, countdown_remaining)
     if theme == "classic":
         from video_classic import render_frame as classic
-        return classic(row, number, total, title, settings, reveal, countdown)
+        return classic(row, number, total, title, settings, reveal, countdown, countdown_remaining)
     is_math = theme=="math"
     ink, muted = ("#29443a", "#658477") if is_math else ("#2d4559", "#6b8297")
     image = Image.new("RGB", (1080,1920), "#e3f1e9" if is_math else "#e6f1f8")
@@ -106,10 +106,9 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
         draw.text((content_right-30,1190),"Bạn chọn đáp án nào?",anchor="rt",font=font(25),fill=muted)
         draw.rounded_rectangle((content_left+30,1265,content_right-30,1280),7,fill="#d3e2df")
         from content_timeline import thinking_seconds
-        fraction=max(0,min(1,countdown/max(1,thinking_seconds(row, settings))))
+        remaining = countdown if countdown_remaining is None else countdown_remaining
+        fraction=max(0,min(1,remaining/max(1,thinking_seconds(row, settings))))
         if fraction: draw.rounded_rectangle((content_left+30,1265,content_left+30+(content_right-content_left-60)*fraction,1280),7,fill="#387a5a")
-    if settings.watermark_enabled and settings.brand.strip():
-        draw.rounded_rectangle((content_left,1420,content_right,1470),15,fill=(255,255,255,185))
-        text(settings.brand,(content_left+30,1428,content_right-30,1462),26,muted)
+    draw_text_watermark(draw, settings, ink, background=(255, 255, 255, 185))
     add_branding(image, settings)
     return compose_content(background, image, settings)

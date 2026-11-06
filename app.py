@@ -405,40 +405,85 @@ class VideoTab(tk.Frame):
         self.stop_background_preview()
         from background_media import is_video
         settings.background_overlay = bool(settings.background and is_video(settings.background))
-        self.duration_label.configure(text=f"Thời lượng preview theo âm thanh: {sum(p.seconds for _, p in scenes):.1f}s")
+        ends = []
+        for _, prepared in scenes:
+            ends.append((ends[-1] if ends else 0) + prepared.seconds)
+        duration = ends[-1] if ends else 0
+        self.duration_label.configure(text=f"Thời lượng preview theo âm thanh: {duration:.1f}s")
         from content_renderer import render_scene, render_ending
+        from content_timeline import thinking_seconds
+        from countdown_animation import CountdownAnimation
+        from bisect import bisect_right
+        from collections import OrderedDict
         import time
         started = None
         elapsed = 0
-        self.preview_seek.configure(to=sum(p.seconds for _, p in scenes))
+        pictures = OrderedDict()
+        displayed_position = None
+        self.preview_seek.configure(to=duration)
         self.preview_seek.set(0)
-        def advance(position=0, offset=0, audio_source=None):
-            nonlocal started, elapsed
-            if position >= len(scenes):
-                self.stop_preview()
+        def advance(audio_source=None):
+            nonlocal started, displayed_position
+            self.playback_timer = None
+            if (generation != self.preview_generation or self.preview_cancel.is_set()
+                    or self.host.active_tab is not self or self.closing):
                 return
-            index, prepared = scenes[position]
             try:
-                picture = render_ending(settings) if prepared.scene.phase == "ending" else render_scene(rows[index], prepared.scene, index+1, len(rows), title, settings)
-                picture.thumbnail((180, 220))
+                while True:
+                    timestamp = elapsed if started is None else max(0, time.monotonic()-started)
+                    position = bisect_right(ends, timestamp)
+                    if position >= len(scenes):
+                        self.stop_preview()
+                        return
+                    index, prepared = scenes[position]
+                    if position not in pictures:
+                        animation = None
+                        if prepared.scene.countdown is not None:
+                            total = thinking_seconds(rows[index], settings)
+                            full = render_scene(rows[index], prepared.scene, index+1, len(rows), title,
+                                                settings, countdown_remaining=total)
+                            empty = render_scene(rows[index], prepared.scene, index+1, len(rows), title,
+                                                 settings, countdown_remaining=0)
+                            full.thumbnail((180, 220))
+                            empty.thumbnail((180, 220))
+                            animation = CountdownAnimation(full, empty, prepared.scene.countdown, total)
+                            picture = None
+                        else:
+                            picture = (render_ending(settings) if prepared.scene.phase == "ending" else
+                                       render_scene(rows[index], prepared.scene, index+1, len(rows), title, settings))
+                            picture.thumbnail((180, 220))
+                        pictures[position] = picture, animation
+                        if len(pictures) > 3:
+                            pictures.popitem(last=False)
+                    pictures.move_to_end(position)
+                    # Layout rendering can take longer than one video frame. Use
+                    # the audio clock afterward and skip scenes already finished.
+                    timestamp = elapsed if started is None else max(0, time.monotonic()-started)
+                    if timestamp < ends[position]:
+                        break
+                picture, animation = pictures[position]
+                if animation is not None:
+                    scene_start = ends[position-1] if position else 0
+                    picture = animation.frame(timestamp-scene_start)
                 if settings.background_overlay and prepared.scene.phase != "ending":
                     if getattr(self, "background_preview_reader", None) is None:
-                        self.start_background_preview(settings, picture, elapsed)
+                        self.start_background_preview(settings, picture, timestamp)
                     else:
                         self.background_preview_overlay = picture.convert("RGBA")
                 else:
                     self.stop_background_preview()
                     self.preview_image = ImageTk.PhotoImage(picture)
                     self.preview.configure(image=self.preview_image)
-                self.selected.set(index+1)
-                self.preview_seek.set(elapsed)
+                if displayed_position != position:
+                    self.selected.set(index+1)
+                    displayed_position = position
+                self.preview_seek.set(timestamp)
                 if started is None:
                     if audio:
                         self.audio_player.play(audio_source or audio)
-                    started = time.monotonic()
-                    started -= elapsed
-                elapsed += prepared.seconds - offset
-                self.playback_timer = self.after(max(1, round((started+elapsed-time.monotonic())*1000)), lambda: advance(position+1))
+                    started = time.monotonic()-timestamp
+                next_frame = min(ends[position], timestamp+1/30) if animation is not None else ends[position]
+                self.playback_timer = self.after(max(1, round((started+next_frame-time.monotonic())*1000)), advance)
             except Exception as error:
                 self.stop_preview()
                 self.validation.configure(text=str(error), foreground="#ba4247")
@@ -449,12 +494,8 @@ class VideoTab(tk.Frame):
             timer = getattr(self, "playback_timer", None)
             if timer:
                 self.after_cancel(timer)
-            position, offset = 0, float(timestamp)
-            while position < len(scenes)-1 and offset >= scenes[position][1].seconds:
-                offset -= scenes[position][1].seconds
-                position += 1
-            timestamp = min(float(timestamp), sum(p.seconds for _, p in scenes)-1/30)
-            offset = max(0, timestamp - sum(p.seconds for _, p in scenes[:position]))
+                self.playback_timer = None
+            timestamp = max(0, min(float(timestamp), duration-1/30))
             source = None
             if audio:
                 self.audio_player.stop()
@@ -465,7 +506,7 @@ class VideoTab(tk.Frame):
                     while block := track.readframes(44100):
                         target.writeframesraw(block)
             started, elapsed = None, timestamp
-            advance(position, offset, source)
+            advance(source)
         self.seek_preview = seek
         advance()
 

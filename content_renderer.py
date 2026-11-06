@@ -40,12 +40,12 @@ def render_ending(settings):
                             color=artwork.getpixel((0, 0)))
 
 
-def render_scene(row, scene, number, total, title, settings):
+def render_scene(row, scene, number, total, title, settings, countdown_remaining=None):
     from engine import fitted, font, wrap
-    from branding import add_branding, compose_content, CONTENT_MARGIN_X
+    from branding import add_branding, compose_content, CONTENT_MARGIN_X, draw_text_watermark
     if row.get("type", "multiple_choice") == "multiple_choice":
         from video_themes import render_frame
-        return render_frame(row, number, total, title, settings, scene.phase == "answer", scene.countdown)
+        return render_frame(row, number, total, title, settings, scene.phase == "answer", scene.countdown, countdown_remaining)
     from video_themes import detect_template
     from prep_themes import PALETTES
     palette = PALETTES.get(detect_template(row, title, settings.template))
@@ -186,11 +186,11 @@ def render_scene(row, scene, number, total, title, settings):
         draw.rounded_rectangle((margin+30, 1344, 1050-margin, 1356), radius=6, fill="#c9dce9")
         from content_timeline import thinking_seconds
         seconds = thinking_seconds(row, settings)
-        fraction = min(1, max(0, scene.countdown/max(1, seconds)))
+        remaining = scene.countdown if countdown_remaining is None else countdown_remaining
+        fraction = min(1, max(0, remaining/max(1, seconds)))
         if fraction:
             draw.rounded_rectangle((margin+30, 1344, margin+30+(1080-2*margin-60)*fraction, 1356), radius=6, fill=palette["accent"] if palette else "#3887bb")
-    if settings.watermark_enabled:
-        block(settings.brand, 1400, 76, 30)
+    draw_text_watermark(draw, settings, palette["ink"] if palette else "#112c50")
     add_branding(image, settings)
     return compose_content(background_image, image, settings)
 
