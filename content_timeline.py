@@ -16,6 +16,8 @@ class Scene:
     progress: float = 0
     speech_parts: tuple = ()  # (text, English voice override); narrator uses None.
     trailing_silence: float = 0.5
+    leading_silence: float = 0
+    speech_gap: float = 0
 
 
 @dataclass(frozen=True)
@@ -48,11 +50,19 @@ def prepare_scene(renderer, scene, directory, name, item_number):
                     asyncio.run(speaker.speech(text, part, directory))
                     paths.append(part)
                 args = [arg for path in paths for arg in ("-i", path)]
-                inputs = "".join(f"[{i}:a]" for i in range(len(paths)))
-                renderer.run([*args, "-filter_complex", f"{inputs}concat=n={len(paths)}:v=0:a=1[out]",
+                streams = ";".join(f"[{i}:a]aresample=44100,asetpts=PTS-STARTPTS"
+                                    + (f",apad=pad_dur={scene.speech_gap}" if scene.speech_gap and i < len(paths)-1 else "")
+                                    + f"[p{i}]" for i in range(len(paths)))
+                inputs = "".join(f"[p{i}]" for i in range(len(paths)))
+                renderer.run([*args, "-filter_complex", f"{streams};{inputs}concat=n={len(paths)}:v=0:a=1[out]",
                               "-map", "[out]", "-ar", "44100", "-ac", "2", audio])
             else:
                 asyncio.run(renderer.speech(scene.narration, audio, directory))
+            if scene.leading_silence:
+                delayed = directory / f"{name}-delayed.wav"
+                renderer.run(["-i", audio, "-af", f"adelay={round(scene.leading_silence*1000)}:all=1",
+                              "-ar", "44100", "-ac", "2", delayed])
+                delayed.replace(audio)
             duration = renderer.audio_duration(audio) + scene.trailing_silence
             if scene.phase == "ending":
                 duration = max(3, duration)
@@ -222,6 +232,7 @@ def thinking_seconds(row, settings):
 
 
 def plan_item(row, settings):
+    from speech_pacing import paced_prep
     if settings.template == "auto":
         from video_themes import detect_template
         settings = replace(settings, template=detect_template(row))
@@ -243,8 +254,13 @@ def plan_item(row, settings):
         scenes[split:split] = countdown
         if kind != "guess_word" and settings.read_explanation and row.get("explanation"):
             last = scenes[-1]
-            parts = last.speech_parts + ((row["explanation"], None),) if last.speech_parts else ()
-            scenes[-1] = replace(last, narration=last.narration + " " + row["explanation"], speech_parts=parts)
+            parts = last.speech_parts or (((last.narration, None),) if paced_prep(settings) else ())
+            parts = parts + ((row["explanation"], None),) if parts else ()
+            scenes[-1] = replace(last, narration=last.narration + " " + row["explanation"], speech_parts=parts,
+                                 speech_gap=.75 if paced_prep(settings) else last.speech_gap)
+    if paced_prep(settings):
+        scenes = [replace(scene, leading_silence=.75) if scene.phase == "answer" and scene.narration.strip()
+                  else scene for scene in scenes]
     return scenes
 
 
@@ -259,4 +275,5 @@ def estimated_seconds(scene):
         return 0.8
     if scene.phase == "arrange":
         return 1/30
-    return max(3, len(plain(scene.narration or scene.text)) / 14 + scene.trailing_silence)
+    return max(3, len(plain(scene.narration or scene.text)) / 14 + scene.trailing_silence
+               + scene.leading_silence + scene.speech_gap*max(0, len(scene.speech_parts)-1))

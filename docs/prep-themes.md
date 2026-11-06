@@ -19,6 +19,10 @@ Thời gian suy nghĩ ưu tiên `thinking_seconds` của từng câu, sau đó `
 
 Giọng đọc có khoảng đệm 250 ms trước khi bắt đầu để thiết bị âm thanh kịp mở. Các đoạn âm thanh được đặt lại timestamp trước khi ghép, giữ nguyên mẫu âm đầu; cache cũ tự được bỏ qua. Đây là biện pháp xử lý khởi động phát âm thanh; chất lượng phát âm từ dịch vụ TTS và việc tai nghe Bluetooth có cắt âm hay không vẫn cần nghe thực tế.
 
-Mở `Mo-QuizStudio.bat` để dùng bản mới tại `release-watermark/QuizStudio/QuizStudio.exe`. `build.bat` đóng gói vào cùng thư mục.
+Easy Prep và ASVAB-Prep nghỉ khoảng 1 giây trước khi đọc đáp án, rồi nghỉ khoảng 1 giây giữa lời đáp án và giải thích. Trong lời đọc, các dấu gạch phân tách cụm, `/`, `\\`, `|`, `;`, `:` và mũi tên tạo nhịp nghỉ 300 ms; cụm có dấu phân tách đọc chậm thêm 6%. Dấu `/` giữa các từ được đọc thành “slash”. Phân số, tỷ lệ, giờ, phép trừ và đường dẫn giữ nguyên; dấu gạch trong từ ghép không bị tách. Nội dung hiển thị giữ nguyên. Preview, tua và xuất video dùng cùng âm thanh đã ngắt nhịp; âm thanh cũ trong cache được tạo lại tự động khi cần.
+
+Chữ watermark ở đáy căn giữa, thẳng hàng với logo nhỏ bên dưới trên tất cả các mẫu. Tiêu đề video phía trên cũng căn giữa trên mẫu Easy Prep và ASVAB-Prep, kể cả khi xuống nhiều dòng.
+
+Mở `Mo-QuizStudio.bat` để dùng bản mới tại `release-title-centered/QuizStudio/QuizStudio.exe`. `build.bat` đóng gói vào cùng thư mục.
 
 Kiểm tra: `test_prep_updates.py` kiểm tra nâng cấp cấu hình một lần, ưu tiên thời gian, thời lượng mỗi giây, ba bố cục ở 2/4/6 lựa chọn và tín hiệu âm đầu với FFmpeg thật. `outputs/prep-layouts.jpg` là ảnh so sánh, các file `outputs/{exam,military,tech}-preview.mp4` là video mẫu không giọng đọc. Script `outputs/check_prep_layouts.py` kiểm tra đủ 12 dạng nội dung ở cả ba mẫu.

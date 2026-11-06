@@ -31,4 +31,6 @@ build-prep/
 release-prep/
 release-prep-english/
 release-watermark/
+release-watermark-centered/
+release-title-centered/
 .voicestudio-runtime/

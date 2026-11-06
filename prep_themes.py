@@ -15,7 +15,8 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     from engine import fitted, font, draw_option_text
     from video_themes import detect_template
     from content_timeline import thinking_seconds
-    palette = PALETTES[detect_template(row, title, settings.template)]
+    theme = detect_template(row, title, settings.template)
+    palette = PALETTES[theme]
     ink, muted, accent = (palette[key] for key in ("ink", "muted", "accent"))
     background = Image.new("RGB", (1080, 1920), palette["background"])
     if settings.background and not settings.background_overlay:
@@ -26,18 +27,19 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     draw = ImageDraw.Draw(image)
     left, right = CONTENT_MARGIN_X, 1080-CONTENT_MARGIN_X
 
-    def text(value, rect, size=42, color=ink, bold=True):
+    def text(value, rect, size=42, color=ink, bold=True, align="left"):
         x, y, r, b = rect
         face, lines, step = fitted(draw, value, size, r-x, b-y, bold)
         top = y + (b-y-len(lines)*step)/2
         for line in lines:
-            draw.text((x, top), line, font=face, fill=color, anchor="lt")
+            draw.text(((x+r)/2 if align == "center" else x, top), line, font=face, fill=color,
+                      anchor="mt" if align == "center" else "lt")
             top += step
 
     draw.rounded_rectangle((left, 178, right, 246), 10, fill=accent)
     text(palette["heading"], (left+24, 188, right-190, 236), 31, "white")
     draw.text((right-24, 212), f"{number:02d} / {total:02d}", font=font(30, True), anchor="rm", fill="white")
-    text(title, (left, 270, right, 382), 54)
+    text(title, (left, 270, right, 382), 54, align="center" if theme in ("exam", "military") else "left")
     draw.line((left, 401, right, 401), fill=accent, width=4)
     text(palette["hint"], (left, 416, right, 459), 25, muted)
     draw.rounded_rectangle((left, 478, right, 672), 14, fill=palette["panel"])
@@ -66,6 +68,6 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
         fraction = max(0, min(1, remaining/max(1, thinking_seconds(row, settings))))
         if fraction:
             draw.rounded_rectangle((left+24, 1280, left+24+(right-left-48)*fraction, 1292), 6, fill=accent)
-    draw_text_watermark(draw, settings, ink, align="left")
+    draw_text_watermark(draw, settings, ink)
     add_branding(image, settings)
     return compose_content(background, image, settings)

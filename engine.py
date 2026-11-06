@@ -289,11 +289,13 @@ class Renderer:
             return
         from preferences import BackgroundStore
         from video_language import english_video
+        from speech_pacing import paced_prep, speech_segments
         english_layout = english_video(self.settings)
+        paced = paced_prep(self.settings)
         cache = BackgroundStore().directory / "tts-cache"
         cache.mkdir(parents=True, exist_ok=True)
-        # Version the processed cache: old WAVs have no playback pre-roll.
-        identity = ["speech-preroll-v1", english_layout, text, self.settings.voice, self.settings.english_voice, self.settings.rate, self.settings.pitch]
+        # Keep older layouts' cache, but regenerate prep audio with punctuation pacing.
+        identity = ["speech-prep-pacing-v2" if paced else "speech-preroll-v1", english_layout, text, self.settings.voice, self.settings.english_voice, self.settings.rate, self.settings.pitch]
         if self.settings.voice_studio.get("enabled"):
             identity.append(self.settings.voice_studio)
         key = hashlib.sha256(json.dumps(identity, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
@@ -305,17 +307,21 @@ class Renderer:
             return
         parts = re.split(r"(\[en\].*?\[/en\])", text, flags=re.I | re.S)
         parts = [part for part in parts if re.search(r"\w", plain(part))]
+        chunks = [(words, part.lower().startswith("[en]"), gap, tempo)
+                  for part in parts
+                  for words, gap, tempo in (speech_segments(plain(part)) if paced else [(plain(part), 0, 1)])]
         files = []
-        for index, part in enumerate(parts):
+        gaps = []
+        for index, (part, english_part, gap, tempo) in enumerate(chunks):
             self.check()
             if not re.search(r"\w", plain(part)):
                 continue
-            voice = self.settings.english_voice if english_layout or part.lower().startswith("[en]") else self.settings.voice
+            voice = self.settings.english_voice if english_layout or english_part else self.settings.voice
             studio = self.settings.voice_studio.get("enabled")
             path = directory / f"speech-{target.stem}-{index}{'.wav' if studio else '.mp3'}"
             if studio:
                 role = voice.split(":", 1)[1] if voice.startswith("voicestudio:") else (
-                    "english" if english_layout or part.lower().startswith("[en]") else "main")
+                    "english" if english_layout or english_part else "main")
                 await self._voice_studio_part(plain(part), role, path)
             else:
                 await self._synthesize_speech(plain(part), voice, path)
@@ -324,7 +330,7 @@ class Renderer:
                 # Pitch is mapped from the UI range to +/- 6 semitones for Google;
                 # atempo compensates pitch-induced speed before applying rate.
                 factor = 2 ** (self.settings.pitch / 100)
-                speed = (1 + self.settings.rate / 100) / factor
+                speed = (1 + self.settings.rate / 100) / factor * tempo
                 filters = [f"aresample=44100", f"asetrate={44100 * factor:.3f}", "aresample=44100"]
                 while speed < 0.5:
                     filters.append("atempo=0.5")
@@ -335,8 +341,13 @@ class Renderer:
                 filters.append(f"atempo={speed:.6f}")
                 self.run(["-i", path, "-af", ",".join(filters), adjusted])
                 path = adjusted
+            elif tempo != 1:
+                adjusted = path.with_name(f"{path.stem}-paced.wav")
+                self.run(["-i", path, "-af", f"atempo={tempo}", "-ar", "44100", "-ac", "2", adjusted])
+                path = adjusted
             files.append(path)
-            on_part((index + 1) / len(parts))
+            gaps.append(gap)
+            on_part((index + 1) / len(chunks))
         if not files:
             raise ValueError("Không có nội dung để đọc.")
         args = []
@@ -344,7 +355,9 @@ class Renderer:
             args.extend(["-i", path])
         # Reset each provider stream's timestamps before concatenation. Keep all
         # original samples and give audio devices 250 ms to open before speech.
-        streams = ";".join(f"[{i}:a]aresample=44100,asetpts=PTS-STARTPTS[p{i}]" for i in range(len(files)))
+        streams = ";".join(f"[{i}:a]aresample=44100,asetpts=PTS-STARTPTS"
+                           + (f",apad=pad_dur={gaps[i]}" if gaps[i] else "")
+                           + f"[p{i}]" for i in range(len(files)))
         inputs = "".join(f"[p{i}]" for i in range(len(files)))
         self.run([*args, "-filter_complex", f"{streams};{inputs}concat=n={len(files)}:v=0:a=1,adelay=250:all=1[out]", "-map", "[out]", "-ar", "44100", "-ac", "2", target])
         staging = cache / f"{key}-{os.getpid()}-{threading.get_ident()}.tmp"
