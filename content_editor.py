@@ -5,7 +5,7 @@ import tkinter as tk
 from uuid import uuid4
 import customtkinter as ctk
 from ui_components import BG, INK, MUTED, ACCENT, LINE, box, label, button, dropdown, entry
-from content_types import DEFAULT_MODE, LABELS, REGISTRY, sample_document, normalize, export_document
+from content_types import DEFAULT_MODE, LABELS, REGISTRY, sample_document, normalize, export_document, document_caption
 
 
 class ContentEditor:
@@ -86,7 +86,8 @@ class ContentEditor:
             return data  # Editing incomplete drafts must remain possible.
         from engine import parse_legacy_questions
         title, rows, mode = normalize(data, parse_legacy_questions)
-        return export_document(title, rows, mode)
+        caption = document_caption(data) if isinstance(data, dict) and "caption" in data else None
+        return export_document(title, rows, mode, caption=caption)
 
     def change(self, operation):
         try:

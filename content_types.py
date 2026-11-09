@@ -158,7 +158,17 @@ def validate_item(row, index):
     return row
 
 
+def document_caption(data):
+    """Read optional posting metadata without changing whitespace or markup."""
+    if not isinstance(data, dict) or "caption" not in data:
+        return ""
+    if not isinstance(data["caption"], str):
+        raise ValueError('caption phải là chuỗi; dùng "" hoặc bỏ trường này nếu không có caption.')
+    return data["caption"]
+
+
 def normalize(data, legacy_parser):
+    document_caption(data)
     if not isinstance(data, dict) or "items" not in data:
         title, rows = legacy_parser(json.dumps(data, ensure_ascii=False))
         for i, row in enumerate(rows, 1):
@@ -194,13 +204,17 @@ def normalize(data, legacy_parser):
     return str(data.get("title", "MỘT CHÚT ENGLISH")), rows, mode
 
 
-def export_document(title, rows, mode):
+def export_document(title, rows, mode, *, caption=None):
     items = [{k: v for k, v in row.items() if not k.startswith("_") and k != "answer_index"} for row in rows]
     # Keep historical 2-6-option files in their original compatible schema.
     if any(row.get("_legacy") and len(row["options"]) != 4 for row in rows):
-        return dict(title=title, questions=[{k: v for k, v in row.items() if k != "type"} for row in items])
-    settings = next((dict(thinking_seconds=row["_default_thinking_seconds"]) for row in rows if "_default_thinking_seconds" in row), {})
-    return dict(schema_version=2, title=title, mode=mode, settings=settings, items=items)
+        document = dict(title=title, questions=[{k: v for k, v in row.items() if k != "type"} for row in items])
+    else:
+        settings = next((dict(thinking_seconds=row["_default_thinking_seconds"]) for row in rows if "_default_thinking_seconds" in row), {})
+        document = dict(schema_version=2, title=title, mode=mode, settings=settings, items=items)
+    if caption is not None:
+        document["caption"] = document_caption({"caption": caption})
+    return document
 
 
 def masked_word(answer):

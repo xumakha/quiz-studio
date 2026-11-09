@@ -5,14 +5,14 @@ App dùng chung một bộ mã nguồn và tự nhận hệ điều hành. Windo
 | Thao tác | Windows | macOS |
 | --- | --- | --- |
 | Khởi động | `run.bat` | `run.command` |
-| Đóng gói bản mới | `build.bat` → `release-corners/QuizStudio/QuizStudio.exe` | `build-macos.command` → `.app` |
+| Đóng gói bản mới | `build.bat` → `release-history/QuizStudio/QuizStudio.exe` | `build-macos.command` → `.app` |
 | Môi trường Python | `.venv` | `.venv-macos` |
 
 Khi chuyển mã nguồn giữa hai máy, cài thư viện riêng bằng launcher trên mỗi máy; không sao chép môi trường Python. Bản `.exe`/`.app` cũ không tự cập nhật theo mã nguồn: cần đóng gói lại trên hệ điều hành tương ứng để dùng các sửa đổi mới. `run.bat` ưu tiên mở bản `.exe` đã có; nếu muốn dùng mã nguồn mới trực tiếp, chạy `.venv\Scripts\python.exe app.py` sau khi cài thư viện.
 
-Sau khi clone, cài Python 3.11 trở lên rồi chạy `run.bat` để cài thư viện và mở app từ mã nguồn nếu chưa có bản đóng gói. Chạy `build.bat` để tạo bản `.exe` tại `release-corners/QuizStudio`.
+Sau khi clone, cài Python 3.11 trở lên rồi chạy `run.bat` để cài thư viện và mở app từ mã nguồn nếu chưa có bản đóng gói. Chạy `build.bat` để tạo bản `.exe` tại `release-history/QuizStudio`.
 
-Nhấp đúp **Mo-QuizStudio.bat** để mở bản mới nhất tại `release-corners/QuizStudio/QuizStudio.exe`. Khi chuyển sang máy khác, sao chép cả thư mục `release-corners/QuizStudio`, bao gồm `_internal`. Không chạy file trong thư mục `build-tabs`: đó là file đóng gói trung gian.
+Nhấp đúp **Mo-QuizStudio.bat** để mở bản mới nhất tại `release-history/QuizStudio/QuizStudio.exe`. Khi chuyển sang máy khác, sao chép cả thư mục `release-history/QuizStudio`, bao gồm `_internal`. Không chạy file trong thư mục `build-tabs`: đó là file đóng gói trung gian.
 
 ## Chạy trên macOS
 
@@ -30,15 +30,17 @@ Chạy kiểm tra: `.venv-macos/bin/python -m unittest discover -v`.
 
 ## Tạo video
 
-Mỗi lần mở app có sẵn ba tab theo thứ tự **Một chút English**, **Easy Prep**, **ASVAB-Prep**, và chọn tab đầu tiên. Mỗi tab tự nhớ riêng giọng đọc, nền, nhạc, logo, ảnh kết thúc, câu kết và các tùy chỉnh video, kể cả sau khi đóng rồi mở lại app. Khi nâng cấp, cài đặt đã lưu của bản cũ được giữ cho tab **Một chút English**. Hai tab còn lại bắt đầu với thông số cơ bản, chữ watermark theo tên tab và câu kết để trống; hãy chọn ảnh và chỉnh thông số riêng cho từng kênh.
+Mỗi lần mở app có sẵn bốn tab theo thứ tự **Một chút English**, **Easy Prep**, **ASVAB-Prep**, **easy-pass.app**, và chọn tab đầu tiên. Mỗi tab tự nhớ riêng giọng đọc, nền, nhạc, logo, ảnh kết thúc, câu kết và các tùy chỉnh video, kể cả sau khi đóng rồi mở lại app. Khi nâng cấp, cài đặt đã lưu của bản cũ được giữ cho tab **Một chút English**. Ba tab còn lại bắt đầu với thông số cơ bản, chữ watermark theo tên tab và câu kết để trống; hãy chọn ảnh và chỉnh thông số riêng cho từng kênh. Tab **easy-pass.app** dùng giao diện **easy-pass.app · Xanh nhạt**, nền màu #D9EDF7 mặc định.
 
 Bấm **+** trên thanh tab để mở thêm video; **Ctrl+T** tạo tab, **Ctrl+W** đóng tab, **Ctrl+Tab / Ctrl+Shift+Tab** chuyển tab (macOS hỗ trợ thêm **Cmd+T / Cmd+W**). Mỗi tab giữ riêng JSON, bản nháp từng dạng, giọng đọc, nền, nhạc, logo, ảnh kết thúc, xem trước và tiến độ. Có thể xuất video ở nhiều tab cùng lúc; phần trăm hiển thị ngay trên tab. Chuyển tab dừng phát thử âm thanh, còn tác vụ xuất tiếp tục chạy. Nút **Hủy tác vụ** chỉ tác động tới tab hiện tại. Hai tab đang xuất không được ghi cùng một file.
 
 Nhấp đúp vào tên tab hoặc chuột phải → **Đổi tên tab…** để đặt tên riêng (1–80 ký tự). Tên tab được lưu cho lần mở sau; đổi tên không thay đổi bộ cài đặt của tab. Tab mới sao chép cài đặt của tab đang chọn rồi lưu độc lập. Các tab mở thêm còn mở khi thoát app cũng được khôi phục cùng tên và cài đặt.
 
+Bấm **Lịch sử video** trên thanh tab để mở danh sách dùng chung cho mọi tab. Mỗi lần xuất MP4 thành công sẽ lưu tên video từ `title`, dạng video và caption tại thời điểm xuất. Chọn một bản ghi để xem caption đầy đủ, **Sao chép caption** hoặc **Mở thư mục**. Lịch sử được lưu trong `history.sqlite3` dưới thư mục dữ liệu người dùng, còn khi đóng và mở lại app. Video xuất trước khi có tính năng này không tự xuất hiện trong lịch sử.
+
 Trong **Tùy chỉnh video → Video → Câu kết cuối video**, tự nhập lời đọc khi hiện ảnh kết thúc. Bấm **Nghe thử câu kết** để xem/nghe riêng đoạn kết; dùng **Dùng câu kết mặc định** để khôi phục. Để trống để chỉ hiện ảnh, không đọc câu kết. Cần bật **Tạo giọng đọc** trong tab Giọng đọc; nội dung dùng giọng chính, còn đoạn `[en]…[/en]` dùng giọng tiếng Anh. Ảnh kết thúc giữ ít nhất 3 giây và kéo dài đến khi đọc xong. Mỗi tab giữ câu kết riêng; câu kết tự lưu cùng cài đặt cho lần mở sau.
 
-Đóng tab đang xử lý hoặc có JSON chưa lưu sẽ yêu cầu xác nhận. Khi đóng tab đang xuất, app hủy và đợi tác vụ dừng trước khi bỏ tab. JSON và bản nháp chỉ giữ trong phiên làm việc; dùng **Lưu JSON** để giữ nội dung. Đóng một trong ba tab mặc định chỉ ẩn tab trong phiên hiện tại; lần mở app tiếp theo tab xuất hiện lại với tên và cài đặt đã lưu. Tab mở thêm đã đóng sẽ không tự mở lại. Xuất nhiều video đồng thời sử dụng thêm CPU và RAM, tốc độ tùy cấu hình máy.
+Đóng tab đang xử lý hoặc có JSON chưa lưu sẽ yêu cầu xác nhận. Khi đóng tab đang xuất, app hủy và đợi tác vụ dừng trước khi bỏ tab. JSON và bản nháp chỉ giữ trong phiên làm việc; dùng **Lưu JSON** để giữ nội dung. Đóng một trong bốn tab mặc định chỉ ẩn tab trong phiên hiện tại; lần mở app tiếp theo tab xuất hiện lại với tên và cài đặt đã lưu. Tab mở thêm đã đóng sẽ không tự mở lại. Xuất nhiều video đồng thời sử dụng thêm CPU và RAM, tốc độ tùy cấu hình máy.
 
 Trong **Tùy chỉnh video → Video**, mục **Logo chìm → Chọn ảnh logo** thay logo mờ sau nội dung. **Logo góc trái** và **Ảnh chibi góc phải** điều khiển hai ảnh ở đầu video, mỗi mục có bật/tắt và chọn ảnh riêng. Mục **Ảnh cuối video → Chọn ảnh cuối video** thay ảnh đoạn kết; **Xem trước ảnh kết thúc** kiểm tra ngay trong khung xem trước. Các mục đều có nút **Dùng ảnh mặc định**. PNG, JPG, WebP và BMP được sao chép vào thư viện `branding/images` trong thư mục dữ liệu người dùng; di chuyển file gốc không làm mất ảnh đã chọn. Mỗi tab có thể dùng ảnh và bật/tắt hai góc khác nhau. Tắt ảnh góc vẫn giữ lựa chọn ảnh để bật lại; không ảnh hưởng logo chìm hoặc chữ watermark. Lựa chọn tự lưu cùng cài đặt. Khi nâng cấp từ bản chưa có hai mục góc, logo góc trái giữ ảnh logo đã chọn trước đó.
 
@@ -71,13 +73,15 @@ App luôn mở ở dạng **Trắc nghiệm ABCD**. Có bộ chọn 11 dạng h�
 
 Nhận mảng câu hỏi hoặc `{ "title": "...", "questions": [...] }`. `question`, `options` (2–6 chuỗi) và đáp án là bắt buộc. `answer` nhận A–F, nguyên văn lựa chọn hoặc số nguyên từ **0**; cũng nhận `correct_answer`/`answer_index`. `explanation` không bắt buộc. `subject` và `lesson` giúp tự nhận diện môn học; sau đó xét tiêu đề và thẻ `[en]`. Môn chưa nhận diện dùng mẫu Quiz nhiều màu. Mẫu này cũng nhận `grade`/`class` để hiển thị lớp.
 
+Thêm `"caption": "Nội dung đăng video\n#quiz"` ở cấp ngoài cùng, cùng cấp với `title` trong JSON v2 hoặc JSON `{title, questions}`. Caption là chuỗi tùy chọn; dùng `\n` để xuống dòng, `\"` để viết dấu ngoặc kép, hoặc bỏ qua khi không cần. Caption được giữ nguyên khi sửa item và lưu JSON, dùng trong **Lịch sử video**; không đưa vào hình hoặc giọng đọc của video.
+
 ## Mã nguồn và đóng gói
 
 - `app.py`, `modern_ui.py`, `icons.py`: cửa sổ nhiều tab, giao diện và thao tác app.
 - `engine.py`, `video_themes.py`, `video_classic.py`: giọng đọc, xuất MP4 và các mẫu video.
 - `preferences.py`, `workspace_profiles.py`: lưu cài đặt riêng theo tab và quản lý thư viện media dùng chung.
 - `requirements.txt`, `.venv`: thư viện chạy từ mã nguồn; `run.bat` hỗ trợ khởi động.
-- `build.bat`: đóng gói bản mới vào `release-corners`; đóng app trước khi đóng gói lại.
+- `build.bat`: đóng gói bản mới vào `release-history`; đóng app trước khi đóng gói lại.
 - `test_*.py`: kiểm tra dữ liệu, render, chọn mẫu, watermark và lưu ảnh nền.
 
 Chạy kiểm tra: `.venv\Scripts\python.exe -m unittest discover -v`. Chạy từ mã nguồn cần Python 3.11 trở lên.

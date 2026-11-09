@@ -14,6 +14,7 @@ DEFAULT_PROFILES = (
     ("mot-chut-english", "Một chút English"),
     ("easy-prep", "Easy Prep"),
     ("asvab-prep", "ASVAB-Prep"),
+    ("easy-pass", "easy-pass.app"),
 )
 DEFAULT_IDS = frozenset(profile_id for profile_id, _ in DEFAULT_PROFILES)
 CONFIG_FILES = ("settings.json", "background.json", "branding.json", "voicestudio.json")
@@ -66,7 +67,7 @@ class WorkspaceProfiles:
                     raise ValueError("Định dạng cài đặt tab không hợp lệ.")
                 records = self._validate_records(data.get("tabs"))
         except (OSError, ValueError) as error:
-            self.warning = f"Không nạp được danh sách tab đã lưu; mở ba tab mặc định. ({error})"
+            self.warning = f"Không nạp được danh sách tab đã lưu; mở các tab mặc định. ({error})"
         self._records = self._with_defaults(records)
         return [dict(record) for record in self._records]
 
@@ -115,10 +116,12 @@ class WorkspaceProfiles:
         settings = dict(USER_DEFAULTS)
         if profile_id in DEFAULT_IDS:
             settings["brand"] = record["name"]
-        if profile_id in ("easy-prep", "asvab-prep"):
+        if profile_id in ("easy-prep", "asvab-prep", "easy-pass"):
             settings["ending_text"] = ""
             settings["video_template"] = "Quân sự · ASVAB" if profile_id == "asvab-prep" else "Luyện thi · Chứng chỉ"
             settings.update(left_logo_enabled=False, right_chibi_enabled=False, watermark_enabled=False, logo_watermark_enabled=False)
+        if profile_id == "easy-pass":
+            settings["video_template"] = "easy-pass.app · Xanh nhạt"
         settings.update(music_file="", music_name="")
         defaults = {
             "voicestudio.json": VOICE_STUDIO_DEFAULTS,
@@ -156,4 +159,18 @@ class WorkspaceProfiles:
                     marker.write_text("1", encoding="utf-8")
             except (OSError, ValueError):
                 pass  # The settings store reports malformed files to the user.
+        if profile_id == "easy-pass" and source_id is None:
+            path = target / "settings.json"
+            marker = target / ".easy-pass-blue-v1"
+            if not marker.exists():
+                try:
+                    current = json.loads(path.read_text(encoding="utf-8"))
+                    if isinstance(current, dict):
+                        if current.get("video_template", "Tự động theo môn học") in (
+                                "Tự động theo môn học", "Luyện thi · Chứng chỉ"):
+                            current["video_template"] = settings["video_template"]
+                            self._write_json(path, current)
+                        marker.write_text("1", encoding="utf-8")
+                except (OSError, ValueError):
+                    pass  # The settings store reports malformed files.
         return target

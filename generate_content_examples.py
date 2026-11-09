@@ -37,7 +37,7 @@ def main():
         definitions[key] = objects(properties, ["type", *spec.required, *extra_required.get(key, [])])
         write(Path("examples/v2") / f"{key}.json", sample_document(key))
     write(Path("examples/v2/mixed.json"), sample_document("mixed"))
-    root = objects(dict(schema_version=dict(const=2), title=dict(type="string"), mode=dict(enum=[*REGISTRY, "mixed"]), settings=objects(dict(thinking_seconds=seconds), []), items=dict(type="array", minItems=1, items=dict(oneOf=[{"$ref": f"#/$defs/{key}"} for key in REGISTRY]))), ["schema_version", "items"])
+    root = objects(dict(schema_version=dict(const=2), title=dict(type="string"), caption=dict(type="string"), mode=dict(enum=[*REGISTRY, "mixed"]), settings=objects(dict(thinking_seconds=seconds), []), items=dict(type="array", minItems=1, items=dict(oneOf=[{"$ref": f"#/$defs/{key}"} for key in REGISTRY]))), ["schema_version", "items"])
     root.update({"$schema": "https://json-schema.org/draft/2020-12/schema", "$defs": definitions})
     root["allOf"] = [{"if": {"properties": {"mode": {"const": key}}, "required": ["mode"]}, "then": {"properties": {"items": {"items": {"$ref": f"#/$defs/{key}"}}}}} for key in REGISTRY]
     write(Path("docs/content-v2.schema.json"), root)

@@ -31,7 +31,7 @@ class WorkspaceProfileTests(unittest.TestCase):
             settings = UserSettingsStore(self.data, config_dir=config)
             background = BackgroundStore(self.data, config_dir=config)
             branding = BrandingStore(self.data, config_dir=config)
-            source = self.image(f"image-{index}.png", (index * 100, 20, 100))
+            source = self.image(f"image-{index}.png", (index * 60, 20, 100))
             music = self.root / f"music-{index}.wav"
             music.write_bytes(f"audio {index}".encode())
             settings.select_music(music, {**USER_DEFAULTS, "brand": record["name"], "rate": index + 20})
@@ -49,8 +49,8 @@ class WorkspaceProfileTests(unittest.TestCase):
                       BackgroundStore(self.data, config_dir=config),
                       BrandingStore(self.data, config_dir=config))
             self.assertEqual(tuple(store.load() for store in stores), snapshot)
-            self.assertEqual(len(stores[1].library()["images"]), 3)
-            self.assertEqual(len(stores[2].library()), 3)
+            self.assertEqual(len(stores[1].library()["images"]), len(records))
+            self.assertEqual(len(stores[2].library()), len(records))
             self.assertTrue(Path(snapshot[0]["music"]).is_file())
             self.assertTrue(Path(snapshot[1]["background"]).is_file())
         second = self.data / "profiles" / records[1]["id"]
@@ -117,7 +117,30 @@ class WorkspaceProfileTests(unittest.TestCase):
         self.assertEqual(restored, records + [extra])
         self.profiles.save(records)
         self.assertEqual(WorkspaceProfiles(self.data).load(), records)
-        self.assertEqual([record["id"] for record in restored[:3]], [item[0] for item in DEFAULT_PROFILES])
+        self.assertEqual([record["id"] for record in restored[:len(DEFAULT_PROFILES)]], [item[0] for item in DEFAULT_PROFILES])
+
+    def test_upgrade_adds_easy_pass_without_changing_existing_profiles(self):
+        previous = [{"id": key, "name": name} for key, name in DEFAULT_PROFILES[:3]]
+        previous[1]["name"] = "Kênh đã đổi tên"
+        self.data.mkdir()
+        self.profiles.config.write_text(json.dumps({"version": 1, "tabs": previous}), encoding="utf-8")
+        existing = self.profiles.prepare(previous[1])
+        saved = UserSettingsStore(self.data, config_dir=existing)
+        saved.save({**USER_DEFAULTS, "rate": 23})
+        before = (existing / "settings.json").read_bytes()
+        records = self.profiles.load()
+        self.assertEqual(records[:3], previous)
+        self.assertEqual(records[3], {"id": "easy-pass", "name": "easy-pass.app"})
+        config = self.profiles.prepare(records[3])
+        settings = UserSettingsStore(self.data, config_dir=config).load()
+        self.assertEqual(settings["brand"], "easy-pass.app")
+        self.assertEqual(settings["ending_text"], "")
+        self.assertEqual(settings["video_template"], "easy-pass.app · Xanh nhạt")
+        self.assertFalse(settings["left_logo_enabled"])
+        self.assertFalse(settings["right_chibi_enabled"])
+        self.profiles.save(records[:3])
+        self.assertEqual(WorkspaceProfiles(self.data).load(), records)
+        self.assertEqual((existing / "settings.json").read_bytes(), before)
 
     def test_bad_metadata_recovers_defaults_and_rejects_unsafe_ids(self):
         defaults = self.profiles.load()

@@ -8,6 +8,7 @@ Mở `examples/v2` để lấy 11 file mẫu từng dạng và `mixed.json`. Có
 {
   "schema_version": 2,
   "title": "MỘT CHÚT ENGLISH",
+  "caption": "Điền từ và thử sức mỗi ngày!\n#tienganh #quiz",
   "mode": "fill_blank",
   "settings": {"thinking_seconds": 5},
   "items": [{
@@ -21,6 +22,10 @@ Mở `examples/v2` để lấy 11 file mẫu từng dạng và `mixed.json`. Có
 ```
 
 `type` bắt buộc trên mỗi item. `id` tùy chọn, nếu có phải duy nhất. `subject`, `prompt` là chuỗi tùy chọn. Các dạng hỏi mặc định suy nghĩ 5 giây theo cài đặt app; settings.thinking_seconds ghi đè cài đặt app, item.thinking_seconds ghi đè settings. Nhận số nguyên 0-30, 0 để bỏ đếm ngược. Các dạng bài học không đếm ngược.
+
+`caption` là chuỗi tùy chọn ở cấp tài liệu, cùng cấp với `title`, `mode` và `items`. Dán caption ngay trong JSON; dùng `\n` để xuống dòng và `\"` cho dấu ngoặc kép bên trong chuỗi. Có thể bỏ trường này hoặc để `""`. Caption được giữ nguyên khi lưu JSON, sửa qua form và thao tác item; không được đọc hoặc vẽ lên video.
+
+Nút **Lịch sử video** ở thanh tab mở cửa sổ chung cho mọi tab, tổng hợp các lần xuất MP4 thành công với tên từ `title`, dạng từ `mode` và caption. Chọn một bản ghi để xem, **Sao chép caption** hoặc **Mở thư mục**. Lịch sử được lưu trong `history.sqlite3` tại thư mục dữ liệu người dùng và còn khi mở lại app. Các video đã xuất trước khi có tính năng này không tự xuất hiện trong lịch sử.
 
 | Type | Trường bắt buộc ngoài type | Trường tùy chọn |
 | --- | --- | --- |
@@ -48,6 +53,6 @@ Editor: chọn dạng sẽ cất bản nháp hiện tại trong phiên làm vi�
 
 **Chạy item** hoặc **Toàn video** chuẩn bị giọng đọc rồi phát preview cùng scene và thời lượng đo âm thanh như export. **Dừng preview** dừng giọng và hình. Có cache TTS theo chữ, cả hai giọng, tốc độ và cao độ tại `%LOCALAPPDATA%/QuizStudio/tts-cache`. Preview lần đầu cần thời gian tạo giọng; có thể tắt TTS để xem bố cục offline. TTS lỗi chặn tác vụ và báo câu/giai đoạn; bấm chạy lại để thử lại, tận dụng cache đã tạo được. Không xuất âm thầm thiếu tiếng.
 
-JSON cũ `{title, questions}` hoặc mảng câu hỏi vẫn nhận đáp án A-F/chỉ số/nguyên văn và 2-6 lựa chọn như trước. File cũ 4 lựa chọn được lưu sang v2; file 2/3/5/6 lựa chọn giữ schema cũ để không tạo file v2 sai chuẩn.
+JSON cũ `{title, questions}` hoặc mảng câu hỏi vẫn nhận đáp án A-F/chỉ số/nguyên văn và 2-6 lựa chọn như trước. Có thể thêm `caption` vào object `{title, caption, questions}`; dạng mảng thuần không có caption. File cũ 4 lựa chọn được lưu sang v2; file 2/3/5/6 lựa chọn giữ schema cũ để không tạo file v2 sai chuẩn. Caption vẫn được giữ khi chuyển đổi.
 
 Chạy: `.venv\Scripts\python.exe app.py`. Kiểm tra: `.venv\Scripts\python.exe -m unittest discover -v`. Tạo lại mẫu/schema: `.venv\Scripts\python.exe generate_content_examples.py`. Bản exe đã đóng gói trước đây cần build lại bằng `build.bat` để có chức năng mới.

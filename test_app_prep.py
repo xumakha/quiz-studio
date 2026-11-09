@@ -44,7 +44,8 @@ class PrepInterfaceTests(unittest.TestCase):
             host = App(data_dir=directory)
             host.withdraw()
             try:
-                english, easy, asvab = host.tabs
+                english, easy, asvab, easy_pass = host.tabs
+                self.assertEqual(TEMPLATES[easy_pass.video_template.get()], "easy_pass")
                 self.assertEqual(TEMPLATES[easy.video_template.get()], "exam")
                 self.assertEqual(TEMPLATES[asvab.video_template.get()], "military")
                 self.assertFalse(easy.right_chibi_enabled.get())

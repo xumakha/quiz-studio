@@ -34,3 +34,5 @@ release-watermark/
 release-watermark-centered/
 release-title-centered/
 .voicestudio-runtime/
+build-history/
+release-history/

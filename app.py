@@ -4,6 +4,7 @@ import json
 import os
 import queue
 import re
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,7 @@ from PIL import ImageTk
 from engine import Cancelled, Renderer, Settings, VOICES, frame, parse_questions
 from preferences import BackgroundStore, BrandingStore, UserSettingsStore, USER_DEFAULTS
 from workspace_profiles import WorkspaceProfiles
+from video_history import VideoHistoryStore
 from video_themes import TEMPLATES, video_template
 from voice_studio import VoiceStudioStore
 
@@ -297,8 +299,10 @@ class VideoTab(tk.Frame):
             return
         path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON", "*.json")])
         if path:
-            from content_types import export_document
-            document = export_document(self.quiz_title, self.rows, self.content_editor.mode)
+            from content_types import document_caption, export_document
+            source = json.loads(self.content_editor.source())
+            caption = document_caption(source) if isinstance(source, dict) and "caption" in source else None
+            document = export_document(self.quiz_title, self.rows, self.content_editor.mode, caption=caption)
             Path(path).write_text(json.dumps(document, ensure_ascii=False, indent=2), encoding="utf-8")
             self.mark_clean()
 
@@ -752,6 +756,15 @@ class VideoTab(tk.Frame):
             return
         try:
             settings, rows, title = self.settings(), list(self.rows), self.quiz_title
+            from content_types import document_caption
+            history_record = {
+                "title": title if title.strip() else Path(path).stem,
+                "video_type": self.content_editor.mode,
+                "caption": document_caption(json.loads(self.content_editor.source())),
+                "tab_name": self.tab_name,
+                "output_path": str(Path(path).resolve()),
+            }
+            history_store = self.host.history_store
         except (ValueError, tk.TclError) as error:
             messagebox.showerror("Cài đặt", str(error), parent=self.winfo_toplevel())
             return
@@ -761,7 +774,12 @@ class VideoTab(tk.Frame):
             renderer = Renderer(settings, lambda text: self.events.put(("log", text)), self.cancel,
                                 progress=lambda percent, message: self.events.put(("progress", (percent, message))))
             renderer.render(title, rows, path)
-            return {"message": f"Đã xuất video: {path}", "path": str(Path(path).resolve()), "duration": renderer.duration}
+            result = {"message": f"Đã xuất video: {path}", "path": history_record["output_path"], "duration": renderer.duration}
+            try:
+                history_store.add({**history_record, "duration": renderer.duration})
+            except (OSError, sqlite3.Error, ValueError) as error:
+                result["history_warning"] = f"Video đã xuất thành công nhưng không lưu được lịch sử: {error}"
+            return result
         try:
             self.start_job(job, exporting=True)
         except Exception:
@@ -801,8 +819,12 @@ class VideoTab(tk.Frame):
                     self.last_output = Path(text["path"])
                     if "duration" in text:
                         self.duration_label.configure(text=f"Thời lượng video thực tế: {text['duration']:.1f}s")
-                    text = text["message"]
+                    warning = text.get("history_warning")
+                    text = text["message"] + (f"\n{warning}" if warning else "")
                     self.folder_button.configure(state="normal")
+                    self.host.refresh_video_history()
+                    if warning and not self.closing:
+                        messagebox.showwarning("Chưa lưu được lịch sử video", warning, parent=self.winfo_toplevel())
                 self.status.configure(text=text)
                 if kind != "log":
                     self.busy = False
@@ -859,6 +881,8 @@ class App(tk.Tk):
         self.configure(bg="#edf2f4")
         from platform_support import data_directory
         self.data_dir = Path(data_dir) if data_dir is not None else data_directory()
+        self.history_store = VideoHistoryStore(self.data_dir)
+        self.history_window = None
         self.profiles = WorkspaceProfiles(self.data_dir)
         self.tabs = []
         self.active_tab = None
@@ -868,6 +892,10 @@ class App(tk.Tk):
         self.tab_widgets = {}
         strip = tk.Frame(self, bg="#e7edef", height=44)
         strip.pack(fill="x")
+        self.history_button = tk.Button(strip, text="Lịch sử video", command=self.open_video_history,
+                                       relief="flat", bg="#e7edef", fg="#218c7c",
+                                       font=("Segoe UI", 11), padx=14)
+        self.history_button.pack(side="right", fill="y", padx=(4, 8))
         for text, command in (("‹", lambda: self.tab_canvas.xview_scroll(-2, "units")),
                               ("›", lambda: self.tab_canvas.xview_scroll(2, "units"))):
             tk.Button(strip, text=text, command=command, relief="flat", bg="#e7edef",
@@ -897,6 +925,21 @@ class App(tk.Tk):
         if self.profiles.warning:
             self.active_tab.status.configure(text=self.profiles.warning)
         self.save_workspace()
+
+    def open_video_history(self):
+        if self.history_window is not None and self.history_window.winfo_exists():
+            self.history_window.refresh()
+            self.history_window.deiconify()
+            self.history_window.lift()
+            self.history_window.focus_set()
+        else:
+            from video_history_ui import VideoHistoryWindow
+            self.history_window = VideoHistoryWindow(self)
+        return self.history_window
+
+    def refresh_video_history(self):
+        if self.history_window is not None and self.history_window.winfo_exists():
+            self.history_window.refresh()
 
     @staticmethod
     def _shortcut(action):
@@ -1116,7 +1159,7 @@ if __name__ == "__main__":
             host.withdraw()
             host.update_idletasks()
             app = host.active_tab
-            assert [tab.tab_name for tab in host.tabs] == ["Một chút English", "Easy Prep", "ASVAB-Prep"]
+            assert [tab.tab_name for tab in host.tabs] == ["Một chút English", "Easy Prep", "ASVAB-Prep", "easy-pass.app"]
             assert app is host.tabs[0]
             assert len(app.rows) == 2 and app.show_preview()
             from content_types import DEFAULT_MODE, REGISTRY, sample_document
@@ -1142,6 +1185,16 @@ if __name__ == "__main__":
             assert app.progress["value"] == 100 and not app.busy
             assert app.last_output == Path(checked_path)
             assert str(app.folder_button.cget("state")) == "normal"
+            checked_history = host.history_store.add({
+                "title": "Video kiểm tra", "video_type": "guess_word",
+                "caption": "Caption kiểm tra\n#English", "tab_name": app.tab_name,
+                "output_path": checked_path, "duration": 12.5,
+            })
+            history_window = host.open_video_history()
+            history_window.withdraw()
+            assert history_window.table.get_children() == (checked_history["id"],)
+            assert history_window.caption_text.get("1.0", "end-1c") == checked_history["caption"]
+            history_window.destroy()
             ffmpeg = Renderer(app.settings()).ffmpeg
             assert Path(ffmpeg).is_file()
             second = host.new_tab()
@@ -1150,7 +1203,7 @@ if __name__ == "__main__":
             assert second.events is not app.events and second.cancel is not app.cancel
             host.select_tab(app)
             host.close_tab(second, confirm=False)
-            assert host.active_tab is app and len(host.tabs) == 3
+            assert host.active_tab is app and len(host.tabs) == 4
             app.show_ending_preview()
             for index, tab in enumerate(host.tabs):
                 tab.brand.set(f"PROFILE {index}")
@@ -1160,14 +1213,15 @@ if __name__ == "__main__":
             host.close()
             host = App(data_dir=check_data.name)
             host.withdraw()
-            assert len(host.tabs) == 3 and host.active_tab is host.tabs[0]
+            assert len(host.tabs) == 4 and host.active_tab is host.tabs[0]
             assert host.tabs[1].tab_name == "Easy Prep đã lưu"
+            assert host.history_store.load() == [checked_history]
             for index, tab in enumerate(host.tabs):
                 assert tab.brand.get() == f"PROFILE {index}"
                 assert tab.countdown.get() == index + 3
             host.close()
             check_data.cleanup()
-            report.write_text(json.dumps({"ok": True, "questions": 2, "default_mode": DEFAULT_MODE, "content_types": len(REGISTRY), "ffmpeg": ffmpeg, "progress_and_output_button": True, "workspace_tabs": True, "profile_persistence": True}), encoding="utf-8")
+            report.write_text(json.dumps({"ok": True, "questions": 2, "default_mode": DEFAULT_MODE, "content_types": len(REGISTRY), "ffmpeg": ffmpeg, "progress_and_output_button": True, "workspace_tabs": True, "profile_persistence": True, "video_history": True}), encoding="utf-8")
         except Exception as error:
             report.write_text(json.dumps({"ok": False, "error": str(error)}), encoding="utf-8")
             sys.exit(1)

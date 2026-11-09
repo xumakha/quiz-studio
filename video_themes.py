@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw, ImageOps
 from branding import CONTENT_MARGIN_X, add_branding, compose_content, draw_text_watermark
 
 TEMPLATES = {"Tự động theo môn học": "auto", "Một chút English · Học ngôn ngữ": "english",
+             "easy-pass.app · Xanh nhạt": "easy_pass",
              "Luyện thi · Chứng chỉ": "exam", "Quân sự · ASVAB": "military", "Tin học · Công nghệ": "tech",
              "Toán · Xanh bạc hà": "math", "Tiếng Anh · Xanh sáng": "english", "Quiz nhiều màu · Mẫu trước": "classic"}
 
@@ -37,7 +38,7 @@ def detect_template(row, title="", selected="auto"):
 def render_frame(row, number, total, title, settings, reveal=False, countdown=None, countdown_remaining=None):
     from engine import draw_option_text, fitted, font
     theme = detect_template(row, title, settings.template)
-    if theme in ("exam", "military", "tech"):
+    if theme in ("exam", "military", "tech", "easy_pass"):
         from prep_themes import render_frame as prep
         return prep(row, number, total, title, settings, reveal, countdown, countdown_remaining)
     if theme == "classic":

@@ -54,7 +54,7 @@ class PrepUpdateTests(unittest.TestCase):
 
     def test_prep_templates_support_all_option_counts_and_phases(self):
         from content_renderer import render_ending
-        for theme in ["exam", "military", "tech"]:
+        for theme in ["exam", "military", "tech", "easy_pass"]:
             settings = Settings(template=theme, width=360, height=640, watermark_enabled=False,
                                 left_logo_enabled=False, right_chibi_enabled=False)
             self.assertEqual(render_ending(settings).size, (360, 640))
@@ -65,6 +65,34 @@ class PrepUpdateTests(unittest.TestCase):
                         self.assertEqual(frame(rows[0], 1, 10, "Exam practice", settings, **phase).size, (360, 640))
         for subject, expected in [("ASVAB", "military"), ("Tin học", "tech"), ("Chứng chỉ", "exam")]:
             self.assertEqual(detect_template({"subject": subject}), expected)
+
+    def test_easy_pass_blue_applies_to_question_scene_and_ending(self):
+        from content_renderer import render_scene, render_ending
+        settings = Settings(template="easy_pass", width=1080, height=1920, speech=False,
+                            watermark_enabled=False, logo_watermark_enabled=False,
+                            left_logo_enabled=False, right_chibi_enabled=False)
+        title, rows = parse_questions(json.dumps(sample_document("multiple_choice")))
+        self.assertEqual(frame(rows[0], 1, 1, title, settings).getpixel((0, 0)), (217, 237, 247))
+        title, rows = parse_questions(json.dumps(sample_document("guess_word")))
+        scene = plan_item(rows[0], settings)[0]
+        self.assertEqual(render_scene(rows[0], scene, 1, 1, title, settings).getpixel((0, 0)), (217, 237, 247))
+        self.assertEqual(render_ending(settings).getpixel((0, 0)), (217, 237, 247))
+
+    def test_existing_easy_pass_profile_gets_blue_once(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profiles = WorkspaceProfiles(directory)
+            record = next(row for row in profiles.load() if row["id"] == "easy-pass")
+            target = profiles._profile_directory("easy-pass")
+            target.mkdir(parents=True)
+            path = target / "settings.json"
+            path.write_text(json.dumps({"video_template": "Luyện thi · Chứng chỉ", "rate": 17}), encoding="utf-8")
+            profiles.prepare(record)
+            state = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(state, {"video_template": "easy-pass.app · Xanh nhạt", "rate": 17})
+            state["video_template"] = "Luyện thi · Chứng chỉ"
+            path.write_text(json.dumps(state), encoding="utf-8")
+            profiles.prepare(record)
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8")), state)
 
     def test_audio_preroll_preserves_initial_samples_and_cache(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -7,6 +7,9 @@
     "title": {
       "type": "string"
     },
+    "caption": {
+      "type": "string"
+    },
     "mode": {
       "enum": [
         "multiple_choice",

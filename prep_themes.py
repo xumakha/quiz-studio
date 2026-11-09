@@ -5,6 +5,7 @@ from branding import CONTENT_MARGIN_X, add_branding, compose_content, draw_text_
 
 
 PALETTES = {
+    "easy_pass": dict(background="#D9EDF7", ink="#17394d", muted="#527487", accent="#247ba0", panel="#ffffff", soft="#c4e3f2", heading="EASY-PASS.APP", hint="REVIEW · TEST YOUR KNOWLEDGE"),
     "exam": dict(background="#edf1f7", ink="#172b4d", muted="#60718c", accent="#275caa", panel="#ffffff", soft="#e0e9f7", heading="EXAM PRACTICE", hint="REVIEW · TEST YOUR KNOWLEDGE"),
     "military": dict(background="#e7e9df", ink="#27362a", muted="#66705b", accent="#596b38", panel="#f7f8ef", soft="#dce2cc", heading="ASVAB PREP", hint="TRAIN · PREPARE FOR TEST DAY"),
     "tech": dict(background="#e8f1f5", ink="#133346", muted="#567586", accent="#007e92", panel="#f8fdff", soft="#d5eaf0", heading="TECH PRACTICE", hint="COMPUTING · TECHNOLOGY · CERTIFICATION"),
@@ -39,7 +40,7 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     draw.rounded_rectangle((left, 178, right, 246), 10, fill=accent)
     text(palette["heading"], (left+24, 188, right-190, 236), 31, "white")
     draw.text((right-24, 212), f"{number:02d} / {total:02d}", font=font(30, True), anchor="rm", fill="white")
-    text(title, (left, 270, right, 382), 54, align="center" if theme in ("exam", "military") else "left")
+    text(title, (left, 270, right, 382), 54, align="center" if theme in ("exam", "military", "easy_pass") else "left")
     draw.line((left, 401, right, 401), fill=accent, width=4)
     text(palette["hint"], (left, 416, right, 459), 25, muted)
     draw.rounded_rectangle((left, 478, right, 672), 14, fill=palette["panel"])

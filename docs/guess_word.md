@@ -2,9 +2,13 @@
 
 Watermark chữ ở đáy video dùng cỡ 42 px trên khung 1080 px, chữ đậm và nét dày hơn; tên dài tự co để vừa khung. Ngay dưới chữ có logo nhỏ căn giữa, dùng cùng ảnh đã chọn trong mục Logo chìm nhưng hiện rõ màu gốc, không làm mờ. Logo giữ đúng tỷ lệ, vừa khung tối đa 240 × 64 px; tắt watermark ở đáy sẽ ẩn cả chữ và logo nhỏ. Thanh đếm ngược thu ngắn liên tục ở 30 fps, trong khi số giây vẫn đổi mỗi giây. Phát xem trước và tua đến giữa giây cũng hiển thị đúng phần thời gian còn lại.
 
-App mở sẵn ba tab **Một chút English**, **Easy Prep**, **ASVAB-Prep** và chọn tab đầu tiên. Giọng đọc, nền, nhạc, logo, ảnh kết thúc và các tùy chỉnh được lưu riêng cho từng tab, tự khôi phục khi mở lại app. Cài đặt từ bản cũ được giữ cho **Một chút English**; hai tab còn lại dùng thông số cơ bản, chữ watermark theo tên tab và câu kết để trống cho đến khi bạn tùy chỉnh.
+App mở sẵn bốn tab **Một chút English**, **Easy Prep**, **ASVAB-Prep**, **easy-pass.app** và chọn tab đầu tiên. Giọng đọc, nền, nhạc, logo, ảnh kết thúc và các tùy chỉnh được lưu riêng cho từng tab, tự khôi phục khi mở lại app. Cài đặt từ bản cũ được giữ cho **Một chút English**; ba tab còn lại dùng thông số cơ bản, chữ watermark theo tên tab và câu kết để trống cho đến khi bạn tùy chỉnh. Tab **easy-pass.app** dùng giao diện **easy-pass.app · Xanh nhạt**, nền màu #D9EDF7 mặc định.
 
-Bấm **+** hoặc **Ctrl+T** để thêm tab; tab mới sao chép cài đặt tab đang chọn rồi lưu độc lập. Tên và các tab còn mở được nhớ cho lần sau. Đóng tab mặc định chỉ ẩn trong phiên hiện tại; mở lại app sẽ khôi phục cả ba với cài đặt đã lưu. Tab mở thêm đã đóng sẽ không tự mở lại. JSON và bản nháp vẫn chỉ giữ trong phiên, cần **Lưu JSON** để giữ nội dung. Mở `Mo-QuizStudio.bat` để chạy bản mới tại `release-corners/QuizStudio/QuizStudio.exe`. Xem [hướng dẫn nhiều tab](../README.md#tạo-video).
+Bấm **+** hoặc **Ctrl+T** để thêm tab; tab mới sao chép cài đặt tab đang chọn rồi lưu độc lập. Tên và các tab còn mở được nhớ cho lần sau. Đóng tab mặc định chỉ ẩn trong phiên hiện tại; mở lại app sẽ khôi phục cả ba với cài đặt đã lưu. Tab mở thêm đã đóng sẽ không tự mở lại. JSON và bản nháp vẫn chỉ giữ trong phiên, cần **Lưu JSON** để giữ nội dung. Mở `Mo-QuizStudio.bat` để chạy bản mới tại `release-history/QuizStudio/QuizStudio.exe`. Xem [hướng dẫn nhiều tab](../README.md#tạo-video).
+
+Bấm **Lịch sử video** ở thanh tab để xem các video đã xuất thành công từ mọi tab, gồm tên video, dạng video và caption. Chọn bản ghi để xem toàn bộ caption, **Sao chép caption** hoặc **Mở thư mục**. Lịch sử lưu trong `history.sqlite3` ở thư mục dữ liệu người dùng và được giữ khi mở lại app. Video đã xuất trước khi có tính năng này không tự được bổ sung.
+
+Dán caption vào trường `caption` ở cấp ngoài cùng của JSON, cùng cấp với `title` và `mode`, ví dụ `"caption": "Bạn đoán đúng bao nhiêu từ?\n#tienganh #doantu"`. Caption là chuỗi tùy chọn, có thể để trống hoặc bỏ qua; app giữ nguyên nội dung, xuống dòng khi lưu JSON và chỉnh item. Caption dùng cho lịch sử video, không đưa vào giọng đọc hoặc hình video. Xem [mẫu JSON có caption](content-v2.md).
 
 Nhấp đúp tên tab hoặc chuột phải → **Đổi tên tab…** để đổi tên; tên được lưu và bộ cài đặt của tab được giữ nguyên. Trong **Tùy chỉnh video → Video**, dùng **Chọn ảnh logo** và **Chọn ảnh cuối video** để thay ảnh cho tab hiện tại. Cả hai đều có danh sách **Ảnh đã tải lên** → **Dùng ảnh đã chọn** để dùng lại ảnh cũ; thư viện ảnh dùng chung vẫn giữ ảnh khi khôi phục mặc định hoặc xóa file gốc.
 
@@ -30,7 +34,7 @@ Nếu dịch vụ giọng đọc không trả âm thanh, app tự thử tối đ
 
 Đã kiểm tra font IPA, thời điểm bật mí, trường hợp thiếu IPA và việc không gửi IPA vào TTS. Bản kiểm tra mới `outputs/guess-word-ipa-check.mp4` bỏ hoàn toàn audio ở bước hiện đáp án; mốc chi tiết nằm trong `outputs/guess-word-ipa-timeline.json`. Chưa nghe đánh giá thủ công chất lượng phát âm.
 
-Bản EXE cập nhật nằm tại `release-latest/QuizStudio/QuizStudio.exe`. Mở `Mo-QuizStudio.bat` để chạy bản này. `build.bat` cũng xuất bản mới vào `release-latest`; các thư mục release cũ được giữ lại.
+Bản EXE cập nhật nằm tại `release-history/QuizStudio/QuizStudio.exe`. Mở `Mo-QuizStudio.bat` để chạy bản này. `build.bat` cũng xuất bản mới vào `release-history`; các thư mục release cũ được giữ lại.
 
 Kiểm thử: 32 bài kiểm tra content/engine/preferences/guess_word đã qua, gồm xuất MP4 thật ở mixed mode. Đã xuất mẫu 10 câu có TTS tại `outputs/guess-word-10-tts.mp4`, độ phân giải kiểm thử 180×320; dùng cấu hình chung để xuất 720×1280 hoặc 1080×1920. Kiểm thử âm thanh tự động xác nhận thời lượng theo audio và khoảng im lặng đếm ngược; chưa nghe nghiệm thu thủ công toàn bộ video.
 
