@@ -8,7 +8,8 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
 
-from video_history_ui import VideoHistoryWindow
+from openpyxl import load_workbook
+from video_history_ui import VideoHistoryWindow, history_day
 
 
 class VideoHistoryWindowTests(unittest.TestCase):
@@ -37,7 +38,7 @@ class VideoHistoryWindowTests(unittest.TestCase):
         self.host.destroy()
 
     def test_details_and_clipboard_keep_complete_caption(self):
-        self.assertEqual(self.window.table.get_children(), ("recent", "older"))
+        self.assertEqual(self.visible_video_ids(), ("recent", "older"))
         self.assertEqual(self.window.title_text.get("1.0", "end-1c"), self.records[0]["title"])
         self.assertEqual(self.window.caption_text.get("1.0", "end-1c"), self.records[0]["caption"])
         self.window.copy_button.invoke()
@@ -48,7 +49,7 @@ class VideoHistoryWindowTests(unittest.TestCase):
         for query, expected in (("#english", "recent"), ("EASY PREP", "older"), ("Đoán từ", "recent")):
             with self.subTest(query=query):
                 self.window.search.set(query)
-                self.assertEqual(self.window.table.get_children(), (expected,))
+                self.assertEqual(self.visible_video_ids(), (expected,))
                 self.assertEqual(self.window.table.selection(), (expected,))
         self.window.search.set("không có kết quả")
         self.assertFalse(self.window.table.get_children())
@@ -66,7 +67,7 @@ class VideoHistoryWindowTests(unittest.TestCase):
             with self.subTest(error=error):
                 self.host.history_store.load.side_effect = error
                 self.assertFalse(self.window.refresh())
-                self.assertEqual(self.window.table.get_children(), ("newest", "recent", "older"))
+                self.assertEqual(self.visible_video_ids(), ("newest", "recent", "older"))
                 self.assertEqual(self.window.table.selection(), ("older",))
                 self.assertIn("Không đọc được lịch sử", self.window.status.cget("text"))
 
@@ -77,6 +78,56 @@ class VideoHistoryWindowTests(unittest.TestCase):
         self.assertIn("Chưa có lịch sử", self.window.empty_message.cget("text"))
         self.assertEqual(self.window.copy_button.cget("state"), "disabled")
         self.assertEqual(self.window.folder_button.cget("state"), "disabled")
+
+    def visible_video_ids(self):
+        return tuple(video for group in self.window.table.get_children()
+                     for video in self.window.table.get_children(group))
+
+    def test_groups_videos_by_local_day_newest_first(self):
+        same_day = dict(self.records[0], id="same-day", created_at="2026-11-09T15:31:00+07:00")
+        self.host.history_store.load.return_value = [self.records[1], same_day, self.records[0]]
+        self.window.refresh()
+        groups = self.window.table.get_children()
+        self.assertEqual(len(groups), 2)
+        day = history_day(same_day["created_at"])
+        self.assertEqual(self.window.table.item(groups[0], "text"),
+                         f"{day:%d/%m/%Y} · 2 video")
+        self.assertEqual(self.window.table.get_children(groups[0]), ("same-day", "recent"))
+        self.assertEqual(self.window.table.get_children(groups[1]), ("older",))
+        self.assertTrue(self.window.table.item(groups[0], "open"))
+        self.window.search.set("#english")
+        self.assertEqual(len(self.window.table.get_children()), 1)
+        self.assertEqual(self.visible_video_ids(), ("same-day", "recent"))
+
+    def test_selecting_day_clears_video_actions(self):
+        self.window.table.selection_set(self.window.table.get_children()[0])
+        self.window._show_selection()
+        self.assertEqual(self.window.title_text.get("1.0", "end-1c"), "")
+        self.assertEqual(self.window.copy_button.cget("state"), "disabled")
+        self.assertEqual(self.window.folder_button.cget("state"), "disabled")
+
+    def test_excel_exports_all_history_even_when_search_is_active(self):
+        self.window.search.set("#english")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "history.xlsx"
+            with patch("video_history_ui.filedialog.asksaveasfilename", return_value=str(path)):
+                self.window.export_excel()
+            workbook = load_workbook(path)
+            try:
+                sheet = workbook.active
+                self.assertEqual(sheet.max_row, 3)
+                self.assertEqual(sheet["F2"].value, self.records[0]["caption"])
+                self.assertEqual(sheet["E3"].value, self.records[1]["title"])
+            finally:
+                workbook.close()
+            self.assertIn("Đã xuất 2 video", self.window.status.cget("text"))
+
+    def test_excel_save_failure_is_reported(self):
+        with patch("video_history_ui.filedialog.asksaveasfilename", return_value="history.xlsx"), \
+                patch("video_history_ui.export_history_excel", side_effect=PermissionError("locked")), \
+                patch("video_history_ui.messagebox.showerror") as error:
+            self.window.export_excel()
+        error.assert_called_once()
 
     def test_closing_window_cancels_its_callbacks_and_keeps_host_running(self):
         errors = []

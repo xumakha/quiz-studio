@@ -1192,7 +1192,9 @@ if __name__ == "__main__":
             })
             history_window = host.open_video_history()
             history_window.withdraw()
-            assert history_window.table.get_children() == (checked_history["id"],)
+            history_groups = history_window.table.get_children()
+            assert len(history_groups) == 1
+            assert history_window.table.get_children(history_groups[0]) == (checked_history["id"],)
             assert history_window.caption_text.get("1.0", "end-1c") == checked_history["caption"]
             history_window.destroy()
             ffmpeg = Renderer(app.settings()).ffmpeg

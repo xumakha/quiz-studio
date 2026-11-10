@@ -3,12 +3,14 @@ from datetime import datetime
 from pathlib import Path
 import sqlite3
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 
 import customtkinter as ctk
+from openpyxl.utils.exceptions import IllegalCharacterError
 
 from content_types import LABELS
 from platform_support import open_in_file_manager
+from video_history_excel import export_history_excel
 from ui_components import ACCENT, BG, INK, LINE, MUTED, box, button, entry, label
 
 
@@ -17,6 +19,14 @@ def display_time(value):
         return datetime.fromisoformat(value).astimezone().strftime("%d/%m/%Y %H:%M")
     except (TypeError, ValueError, OverflowError):
         return value or "—"
+
+
+def history_day(value):
+    """Group by the same local date used in the video details."""
+    try:
+        return datetime.fromisoformat(value).astimezone().date()
+    except (TypeError, ValueError, OverflowError):
+        return None
 
 
 class VideoHistoryWindow(ctk.CTkToplevel):
@@ -48,6 +58,7 @@ class VideoHistoryWindow(ctk.CTkToplevel):
                                   placeholder_text="Tên video, loại, kênh hoặc caption…")
         self.search_field.pack(side="left", fill="x", expand=True)
         button(toolbar, "Làm mới", self.refresh, width=100).pack(side="right", padx=(10, 0))
+        button(toolbar, "Xuất Excel", self.export_excel, width=110).pack(side="right", padx=(10, 0))
 
         table_panel = box(self, "white", corner_radius=8, border_width=1, border_color=LINE)
         table_panel.grid(row=2, column=0, sticky="nsew", padx=24, pady=(0, 12))
@@ -61,9 +72,13 @@ class VideoHistoryWindow(ctk.CTkToplevel):
         style.map("History.Treeview", background=[("selected", "#e7f5f1")],
                   foreground=[("selected", ACCENT)])
         columns = ("time", "channel", "type", "title", "caption")
-        self.table = ttk.Treeview(table_panel, columns=columns, show="headings", selectmode="browse",
+        self.table = ttk.Treeview(table_panel, columns=columns, show="tree headings", selectmode="browse",
                                   height=6, style="History.Treeview")
-        for key, title, width in (("time", "Thời gian xuất", 135), ("channel", "Kênh", 130),
+        self.table.heading("#0", text="Ngày xuất", anchor="w")
+        self.table.column("#0", width=225, minwidth=205, stretch=False)
+        self.table.tag_configure("day", background="#e7f5f1", foreground=ACCENT,
+                                 font=("Segoe UI", 10, "bold"))
+        for key, title, width in (("time", "Giờ xuất", 80), ("channel", "Kênh", 130),
                                   ("type", "Loại video", 190), ("title", "Tên video", 230),
                                   ("caption", "Caption", 270)):
             self.table.heading(key, text=title, anchor="w")
@@ -155,11 +170,20 @@ class VideoHistoryWindow(ctk.CTkToplevel):
         children = self.table.get_children()
         if children:
             self.table.delete(*children)
+        groups = {}
         for record in visible:
-            summary = " ".join(record["caption"].split())
-            self.table.insert("", "end", iid=record["id"], values=(
-                display_time(record["created_at"]), record["tab_name"],
-                LABELS.get(record["video_type"], record["video_type"]), record["title"], summary))
+            groups.setdefault(history_day(record["created_at"]), []).append(record)
+        for day in sorted(groups, key=lambda value: value.isoformat() if value else "", reverse=True):
+            records = groups[day]
+            day_label = day.strftime("%d/%m/%Y") if day else "Không rõ ngày"
+            group_id = self.table.insert("", "end", text=f"{day_label} · {len(records)} video",
+                                         open=True, tags=("day",))
+            for record in records:
+                summary = " ".join(record["caption"].split())
+                time = display_time(record["created_at"])
+                self.table.insert(group_id, "end", iid=record["id"], values=(
+                    time.rsplit(" ", 1)[-1] if day else time, record["tab_name"],
+                    LABELS.get(record["video_type"], record["video_type"]), record["title"], summary))
         if visible:
             self.empty_message.place_forget()
             selection = selected_id if selected_id and self.table.exists(selected_id) else visible[0]["id"]
@@ -207,6 +231,24 @@ class VideoHistoryWindow(ctk.CTkToplevel):
             self.clipboard_clear()
             self.clipboard_append(record["caption"])
             self.status.configure(text="Đã sao chép caption.", text_color=ACCENT)
+
+    def export_excel(self):
+        # Always export the complete, freshly loaded history, including records
+        # hidden by the current search, so this file is a useful backup.
+        if not self.refresh():
+            return
+        path = filedialog.asksaveasfilename(
+            parent=self, title="Lưu toàn bộ lịch sử video và caption",
+            defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")],
+            initialfile=f"Lich-su-video-{datetime.now():%Y-%m-%d}.xlsx")
+        if not path:
+            return
+        try:
+            count = export_history_excel(self.records, path)
+        except (OSError, ValueError, IllegalCharacterError) as error:
+            messagebox.showerror("Không xuất được Excel", str(error), parent=self)
+            return
+        self.status.configure(text=f"Đã xuất {count} video và caption: {path}", text_color=ACCENT)
 
     def open_output_folder(self):
         record = self._selected_record()
