@@ -1,6 +1,6 @@
 """Language of generated video copy; authored lesson content stays untouched."""
 
-ENGLISH_TEMPLATES = frozenset(("exam", "military", "tech"))
+ENGLISH_TEMPLATES = frozenset(("exam", "military", "tech", "dmv"))
 
 CONTENT_LABELS_EN = {
     "guess_word": "Guess the word", "multiple_choice": "Multiple choice",

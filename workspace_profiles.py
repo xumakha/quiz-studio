@@ -15,6 +15,7 @@ DEFAULT_PROFILES = (
     ("easy-prep", "Easy Prep"),
     ("asvab-prep", "ASVAB-Prep"),
     ("easy-pass", "easy-pass.app"),
+    ("dmv-prep", "dmv-prep.org"),
 )
 DEFAULT_IDS = frozenset(profile_id for profile_id, _ in DEFAULT_PROFILES)
 CONFIG_FILES = ("settings.json", "background.json", "branding.json", "voicestudio.json")
@@ -116,12 +117,14 @@ class WorkspaceProfiles:
         settings = dict(USER_DEFAULTS)
         if profile_id in DEFAULT_IDS:
             settings["brand"] = record["name"]
-        if profile_id in ("easy-prep", "asvab-prep", "easy-pass"):
+        if profile_id in ("easy-prep", "asvab-prep", "easy-pass", "dmv-prep"):
             settings["ending_text"] = ""
             settings["video_template"] = "Quân sự · ASVAB" if profile_id == "asvab-prep" else "Luyện thi · Chứng chỉ"
             settings.update(left_logo_enabled=False, right_chibi_enabled=False, watermark_enabled=False, logo_watermark_enabled=False)
         if profile_id == "easy-pass":
             settings["video_template"] = "easy-pass.app · Xanh nhạt"
+        if profile_id == "dmv-prep":
+            settings["video_template"] = "dmv-prep.org · Luyện thi lái xe"
         settings.update(music_file="", music_name="")
         defaults = {
             "voicestudio.json": VOICE_STUDIO_DEFAULTS,

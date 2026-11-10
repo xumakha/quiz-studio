@@ -142,6 +142,29 @@ class WorkspaceProfileTests(unittest.TestCase):
         self.assertEqual(WorkspaceProfiles(self.data).load(), records)
         self.assertEqual((existing / "settings.json").read_bytes(), before)
 
+    def test_upgrade_adds_dmv_and_preserves_existing_settings(self):
+        previous = [{"id": key, "name": name} for key, name in DEFAULT_PROFILES[:4]]
+        extra = self.profiles.new_record(5)
+        self.data.mkdir()
+        self.profiles.config.write_text(json.dumps({"version": 1, "tabs": previous + [extra]}), encoding="utf-8")
+        existing = self.profiles.prepare(previous[3])
+        before = {name: (existing / name).read_bytes() for name in CONFIG_FILES}
+        records = self.profiles.load()
+        self.assertEqual(records, previous + [{"id": "dmv-prep", "name": "dmv-prep.org"}, extra])
+        config = self.profiles.prepare(records[4])
+        store = UserSettingsStore(self.data, config_dir=config)
+        state = store.load()
+        self.assertEqual(state["brand"], "dmv-prep.org")
+        self.assertEqual(state["video_template"], "dmv-prep.org · Luyện thi lái xe")
+        self.assertEqual(state["ending_text"], "")
+        for key in ("watermark_enabled", "logo_watermark_enabled", "left_logo_enabled", "right_chibi_enabled"):
+            self.assertFalse(state[key])
+        store.save({**state, "video_template": "Toán · Xanh bạc hà", "rate": 19})
+        self.profiles.prepare(records[4])
+        self.assertEqual(store.load()["rate"], 19)
+        self.assertEqual(store.load()["video_template"], "Toán · Xanh bạc hà")
+        self.assertEqual({name: (existing / name).read_bytes() for name in CONFIG_FILES}, before)
+
     def test_bad_metadata_recovers_defaults_and_rejects_unsafe_ids(self):
         defaults = self.profiles.load()
         self.data.mkdir()

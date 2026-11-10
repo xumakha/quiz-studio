@@ -5,6 +5,7 @@ from branding import CONTENT_MARGIN_X, add_branding, compose_content, draw_text_
 
 
 PALETTES = {
+    "dmv": dict(background="#F0F4FF", ink="#152549", muted="#62708B", accent="#4471FD", panel="#ffffff", soft="#E4EBFF", heading="DMV-PREP.ORG", hint="ROAD SIGNS · RULES OF THE ROAD"),
     "easy_pass": dict(background="#D9EDF7", ink="#17394d", muted="#527487", accent="#247ba0", panel="#ffffff", soft="#c4e3f2", heading="EASY-PASS.APP", hint="REVIEW · TEST YOUR KNOWLEDGE"),
     "exam": dict(background="#edf1f7", ink="#172b4d", muted="#60718c", accent="#275caa", panel="#ffffff", soft="#e0e9f7", heading="EXAM PRACTICE", hint="REVIEW · TEST YOUR KNOWLEDGE"),
     "military": dict(background="#e7e9df", ink="#27362a", muted="#66705b", accent="#596b38", panel="#f7f8ef", soft="#dce2cc", heading="ASVAB PREP", hint="TRAIN · PREPARE FOR TEST DAY"),

@@ -1,4 +1,8 @@
-# Giao diện Easy Prep và ASVAB-Prep
+# Giao diện Easy Prep, ASVAB-Prep và DMV Prep
+
+Tab mặc định thứ năm **dmv-prep.org** có cấu hình riêng và mẫu **dmv-prep.org · Luyện thi lái xe**. Màu chủ đạo #4471FD, nền #F0F4FF, đầu trang có biểu tượng làn đường, tiến độ câu hỏi, thẻ đáp án và giải thích xanh lá. Cùng một bộ dựng hình dùng cho xem trước và xuất video; hỗ trợ 2–6 đáp án, đếm ngược và ảnh nền tùy chọn. Chữ hướng dẫn và giọng đọc mặc định cho nội dung không gắn thẻ dùng tiếng Anh.
+
+Tab được thêm tự động khi mở danh sách tab cũ; giữ nguyên cài đặt các tab hiện có. File `examples/dmv_questions.json` là mẫu bố cục về hình dạng, không phải ngân hàng đề thi DMV.
 
 Trong tab **Video**, mục **Giao diện cho toàn bộ video** có các lựa chọn:
 
@@ -23,6 +27,6 @@ Easy Prep và ASVAB-Prep nghỉ khoảng 1 giây trước khi đọc đáp án, 
 
 Chữ watermark ở đáy căn giữa, thẳng hàng với logo nhỏ bên dưới trên tất cả các mẫu. Tiêu đề video phía trên cũng căn giữa trên mẫu Easy Prep và ASVAB-Prep, kể cả khi xuống nhiều dòng.
 
-Mở `Mo-QuizStudio.bat` để dùng bản mới tại `release-title-centered/QuizStudio/QuizStudio.exe`. `build.bat` đóng gói vào cùng thư mục.
+Mở `Mo-QuizStudio.bat` để dùng bản mới tại `release-dmv/QuizStudio/QuizStudio.exe`. `build.bat` đóng gói vào cùng thư mục.
 
 Kiểm tra: `test_prep_updates.py` kiểm tra nâng cấp cấu hình một lần, ưu tiên thời gian, thời lượng mỗi giây, ba bố cục ở 2/4/6 lựa chọn và tín hiệu âm đầu với FFmpeg thật. `outputs/prep-layouts.jpg` là ảnh so sánh, các file `outputs/{exam,military,tech}-preview.mp4` là video mẫu không giọng đọc. Script `outputs/check_prep_layouts.py` kiểm tra đủ 12 dạng nội dung ở cả ba mẫu.

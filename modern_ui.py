@@ -7,20 +7,27 @@ from video_themes import TEMPLATES
 from icons import icon, IconTabs
 from preferences import USER_DEFAULTS
 
-from ui_components import BG, INK, MUTED, ACCENT, LINE, box, label, button, dropdown
+from ui_components import BG, INK, MUTED, LINE, box, label, button as standard_button, dropdown
 
 
 def build_ui(app, saved):
+    ACCENT = "#4471FD" if app.profile_id == "dmv-prep" else "#218c7c"
+    def button(parent, text, command, **kwargs):
+        control = standard_button(parent, text, command, **kwargs)
+        if kwargs.get("primary") and app.profile_id == "dmv-prep":
+            control.configure(fg_color=ACCENT, hover_color="#315CDE")
+        return control
     ctk.set_appearance_mode("light")
     ctk.set_widget_scaling(1)
     app.configure(bg=BG)
     style = ttk.Style(app)
     style.theme_use("clam")
+    progress_style = "DMV.Horizontal.TProgressbar" if app.profile_id == "dmv-prep" else "Horizontal.TProgressbar"
     style.configure("TLabel", background="white", foreground=INK, font=("Segoe UI", 9))
-    style.configure("Horizontal.TProgressbar", background=ACCENT, troughcolor="#edf2f4", borderwidth=0, thickness=5)
+    style.configure(progress_style, background=ACCENT, troughcolor="#edf2f4", borderwidth=0, thickness=5)
     style.configure("Treeview", background="white", fieldbackground="white", foreground=INK, rowheight=38, font=("Segoe UI", 10), borderwidth=0)
     style.configure("Treeview.Heading", background=BG, foreground=MUTED, font=("Segoe UI", 9, "bold"), relief="flat")
-    style.map("Treeview", background=[("selected", "#e7f5f1")], foreground=[("selected", ACCENT)])
+    style.map("Treeview", background=[("selected", "#e7f5f1")], foreground=[("selected", "#218c7c")])
 
     def divider(parent):
         box(parent, LINE, height=1, corner_radius=0).pack(fill="x", pady=10)
@@ -81,6 +88,7 @@ def build_ui(app, saved):
     def update_workspace_caption(*args):
         theme = TEMPLATES[app.video_template.get()]
         workspace_caption.configure(text={"exam": "Exam & certification practice · Test your knowledge",
+            "dmv": "DMV practice · Road signs & rules of the road",
             "military": "ASVAB & military preparation · Train for test day",
             "tech": "Computing & technology · Certification practice",
             "english": "Một chút English · Học ngôn ngữ mỗi ngày"}.get(theme, "Không gian sáng tạo video trắc nghiệm"))
@@ -109,7 +117,7 @@ def build_ui(app, saved):
     area.pack(fill="both", expand=True)
     app.status = ttk.Label(area, text="Sẵn sàng tạo video", foreground=MUTED, wraplength=770)
     app.status.pack(anchor="w", pady=(0, 7))
-    app.progress = ttk.Progressbar(area, mode="determinate", maximum=100)
+    app.progress = ttk.Progressbar(area, mode="determinate", maximum=100, style=progress_style)
     app.progress.pack(fill="x")
 
     intro = box(app)

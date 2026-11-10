@@ -8,6 +8,7 @@ from branding import CONTENT_MARGIN_X, add_branding, compose_content, draw_text_
 
 TEMPLATES = {"Tự động theo môn học": "auto", "Một chút English · Học ngôn ngữ": "english",
              "easy-pass.app · Xanh nhạt": "easy_pass",
+             "dmv-prep.org · Luyện thi lái xe": "dmv",
              "Luyện thi · Chứng chỉ": "exam", "Quân sự · ASVAB": "military", "Tin học · Công nghệ": "tech",
              "Toán · Xanh bạc hà": "math", "Tiếng Anh · Xanh sáng": "english", "Quiz nhiều màu · Mẫu trước": "classic"}
 
@@ -22,6 +23,8 @@ def detect_template(row, title="", selected="auto"):
         return selected
     for source in (str(row.get("subject", ""))+" "+str(row.get("lesson", "")), title):
         source = "".join(c for c in unicodedata.normalize("NFD", source.lower()) if unicodedata.category(c)!="Mn").replace("đ","d")
+        if re.search(r"\b(dmv|driver|driving|road signs|lai xe)\b", source):
+            return "dmv"
         if re.search(r"\b(asvab|military|quan su|army)\b", source):
             return "military"
         if re.search(r"\b(tin hoc|cong nghe|computer|computing|cyber|comptia)\b", source):
@@ -38,6 +41,9 @@ def detect_template(row, title="", selected="auto"):
 def render_frame(row, number, total, title, settings, reveal=False, countdown=None, countdown_remaining=None):
     from engine import draw_option_text, fitted, font
     theme = detect_template(row, title, settings.template)
+    if theme == "dmv":
+        from dmv_theme import render_frame as dmv
+        return dmv(row, number, total, title, settings, reveal, countdown, countdown_remaining)
     if theme in ("exam", "military", "tech", "easy_pass"):
         from prep_themes import render_frame as prep
         return prep(row, number, total, title, settings, reveal, countdown, countdown_remaining)

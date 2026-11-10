@@ -57,11 +57,11 @@ class WorkspaceTabTests(unittest.TestCase):
         self.host = App(data_dir=self.root / "data")
         self.host.withdraw()
 
-    def test_four_default_tabs_restore_all_settings_and_media_independently(self):
+    def test_five_default_tabs_restore_all_settings_and_media_independently(self):
         self.assertEqual([tab.profile_id for tab in self.host.tabs],
-                         ["mot-chut-english", "easy-prep", "asvab-prep", "easy-pass"])
+                         ["mot-chut-english", "easy-prep", "asvab-prep", "easy-pass", "dmv-prep"])
         self.assertEqual([tab.tab_name for tab in self.host.tabs],
-                         ["Một chút English", "Easy Prep", "ASVAB-Prep", "easy-pass.app"])
+                         ["Một chút English", "Easy Prep", "ASVAB-Prep", "easy-pass.app", "dmv-prep.org"])
         self.assertIs(self.host.active_tab, self.host.tabs[0])
         snapshots = {}
         sources = []
@@ -84,7 +84,7 @@ class WorkspaceTabTests(unittest.TestCase):
             for name, value in chosen.items():
                 getattr(tab, name).set(value)
             tab.background_dim.set(15 + index)
-            picture = self.image(f"Profile {index}.png", ("red", "green", "blue", "yellow")[index])
+            picture = self.image(f"Profile {index}.png", ("red", "green", "blue", "yellow", "purple")[index])
             music = self.root / f"Music {index}.wav"
             with wave.open(str(music), "wb") as stream:
                 stream.setparams((1, 2, 8000, 0, "NONE", "not compressed"))
@@ -106,7 +106,7 @@ class WorkspaceTabTests(unittest.TestCase):
             saved = UserSettingsStore(self.root / "data", config_dir=tab.user_store.config.parent).load()
             for name, value in snapshots[tab.profile_id][0].items():
                 self.assertEqual(saved[name], value, (tab.profile_id, name))
-        self.assertEqual(len({tab.user_store.config for tab in self.host.tabs}), 4)
+        self.assertEqual(len({tab.user_store.config for tab in self.host.tabs}), 5)
         for source in sources:
             source.unlink()
         self.host.select_tab(self.host.tabs[-1])
@@ -147,7 +147,7 @@ class WorkspaceTabTests(unittest.TestCase):
         self.host.close_tab(first, confirm=False)
         self.assertNotIn(first, self.host.tabs)
         self.reopen()
-        self.assertEqual(len(self.host.tabs), 5)
+        self.assertEqual(len(self.host.tabs), 6)
         self.assertEqual(self.host.tabs[0].profile_id, first_id)
         self.assertEqual(self.host.tabs[0].tab_name, "Tên trùng nhau")
         self.assertEqual(self.host.tabs[0].countdown.get(), 8)
@@ -158,7 +158,7 @@ class WorkspaceTabTests(unittest.TestCase):
         self.assertEqual(extra.ending_text.get(), "Câu kết tab thêm")
         self.host.close_tab(extra, confirm=False)
         self.reopen()
-        self.assertEqual(len(self.host.tabs), 4)
+        self.assertEqual(len(self.host.tabs), 5)
         self.assertNotIn(extra_id, [tab.profile_id for tab in self.host.tabs])
         self.assertEqual(self.host.tabs[0].countdown.get(), 8)
         self.errors.assert_not_called()

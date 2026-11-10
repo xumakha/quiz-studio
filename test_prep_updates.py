@@ -54,7 +54,7 @@ class PrepUpdateTests(unittest.TestCase):
 
     def test_prep_templates_support_all_option_counts_and_phases(self):
         from content_renderer import render_ending
-        for theme in ["exam", "military", "tech", "easy_pass"]:
+        for theme in ["exam", "military", "tech", "easy_pass", "dmv"]:
             settings = Settings(template=theme, width=360, height=640, watermark_enabled=False,
                                 left_logo_enabled=False, right_chibi_enabled=False)
             self.assertEqual(render_ending(settings).size, (360, 640))
@@ -93,6 +93,21 @@ class PrepUpdateTests(unittest.TestCase):
             path.write_text(json.dumps(state), encoding="utf-8")
             profiles.prepare(record)
             self.assertEqual(json.loads(path.read_text(encoding="utf-8")), state)
+
+    def test_dmv_brand_color_and_distinct_layout_match_preview_and_ending(self):
+        from branding import CONTENT_OFFSET_Y
+        from content_renderer import render_scene, render_ending
+        settings = Settings(template="dmv", speech=False, watermark_enabled=False,
+                            logo_watermark_enabled=False, left_logo_enabled=False, right_chibi_enabled=False)
+        title, rows = parse_questions(Path("examples/dmv_questions.json").read_text(encoding="utf-8"))
+        question = frame(rows[0], 1, len(rows), title, settings, countdown=5)
+        self.assertEqual(question.getpixel((90, 300+CONTENT_OFFSET_Y)), (68, 113, 253))
+        self.assertEqual(question.getpixel((0, 0)), (240, 244, 255))
+        scene = next(scene for scene in plan_item(rows[0], settings) if scene.countdown == 5)
+        self.assertEqual(render_scene(rows[0], scene, 1, len(rows), title, settings).tobytes(), question.tobytes())
+        self.assertEqual(render_ending(settings).getpixel((90, 625)), (68, 113, 253))
+        for source in ("DMV practice", "Driving test", "Road signs", "Lái xe"):
+            self.assertEqual(detect_template({"subject": source}), "dmv")
 
     def test_audio_preroll_preserves_initial_samples_and_cache(self):
         with tempfile.TemporaryDirectory() as directory:

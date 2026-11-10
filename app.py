@@ -67,7 +67,8 @@ class VideoTab(tk.Frame):
         build_ui(self, {**saved_background, **saved_settings})
         for name in USER_DEFAULTS:
             getattr(self, name).trace_add("write", self.user_settings_changed)
-        self.text.insert("1.0", (ROOT / "examples/questions.json").read_text(encoding="utf-8"))
+        sample = "dmv_questions.json" if self.profile_id == "dmv-prep" else "questions.json"
+        self.text.insert("1.0", (ROOT / "examples" / sample).read_text(encoding="utf-8"))
         self.validate()
         self.mark_clean()
         warnings = [store.warning for store in (self.background_store, self.user_store, self.branding_store,
@@ -1010,7 +1011,8 @@ class App(tk.Tk):
             caption += " · " + state
         color = "white" if tab is self.active_tab else "#e7edef"
         widgets[0].configure(bg=color)
-        widgets[1].configure(text=caption, bg=color, fg="#218c7c" if tab is self.active_tab else "#526170")
+        accent = "#4471FD" if tab.profile_id == "dmv-prep" else "#218c7c"
+        widgets[1].configure(text=caption, bg=color, fg=accent if tab is self.active_tab else "#526170")
         widgets[2].configure(bg=color)
         if tab is self.active_tab:
             self.title(f"{tab.tab_name} — Quiz Studio")
@@ -1159,7 +1161,7 @@ if __name__ == "__main__":
             host.withdraw()
             host.update_idletasks()
             app = host.active_tab
-            assert [tab.tab_name for tab in host.tabs] == ["Một chút English", "Easy Prep", "ASVAB-Prep", "easy-pass.app"]
+            assert [tab.tab_name for tab in host.tabs] == ["Một chút English", "Easy Prep", "ASVAB-Prep", "easy-pass.app", "dmv-prep.org"]
             assert app is host.tabs[0]
             assert len(app.rows) == 2 and app.show_preview()
             from content_types import DEFAULT_MODE, REGISTRY, sample_document
@@ -1205,7 +1207,7 @@ if __name__ == "__main__":
             assert second.events is not app.events and second.cancel is not app.cancel
             host.select_tab(app)
             host.close_tab(second, confirm=False)
-            assert host.active_tab is app and len(host.tabs) == 4
+            assert host.active_tab is app and len(host.tabs) == 5
             app.show_ending_preview()
             for index, tab in enumerate(host.tabs):
                 tab.brand.set(f"PROFILE {index}")
@@ -1215,7 +1217,7 @@ if __name__ == "__main__":
             host.close()
             host = App(data_dir=check_data.name)
             host.withdraw()
-            assert len(host.tabs) == 4 and host.active_tab is host.tabs[0]
+            assert len(host.tabs) == 5 and host.active_tab is host.tabs[0]
             assert host.tabs[1].tab_name == "Easy Prep đã lưu"
             assert host.history_store.load() == [checked_history]
             for index, tab in enumerate(host.tabs):

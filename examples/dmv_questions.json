@@ -1,0 +1,21 @@
+{
+  "title": "DMV · ROAD SIGN SHAPES",
+  "questions": [
+    {
+      "id": "dmv-shape-01",
+      "subject": "DMV",
+      "question": "How many sides does an octagonal sign have?",
+      "options": ["Four sides", "Five sides", "Six sides", "Eight sides"],
+      "answer": "D",
+      "explanation": "An octagon has eight sides. Recognizing shapes helps you identify road signs."
+    },
+    {
+      "id": "dmv-shape-02",
+      "subject": "DMV",
+      "question": "Which shape has three sides?",
+      "options": ["Circle", "Triangle", "Rectangle", "Octagon"],
+      "answer": "B",
+      "explanation": "A triangle has three sides. Practice recognizing sign shapes as well as their symbols and words."
+    }
+  ]
+}
