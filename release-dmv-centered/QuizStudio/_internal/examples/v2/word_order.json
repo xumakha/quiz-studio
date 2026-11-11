@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "title": "MỘT CHÚT ENGLISH",
+  "mode": "word_order",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "word_order-01",
+      "type": "word_order",
+      "subject": "SẮP XẾP TỪ",
+      "tokens": [
+        {
+          "id": "t1",
+          "text": "[en]usually[/en]"
+        },
+        {
+          "id": "t2",
+          "text": "[en]I[/en]"
+        },
+        {
+          "id": "t3",
+          "text": "[en]get up[/en]"
+        }
+      ],
+      "answer_order": [
+        "t2",
+        "t1",
+        "t3"
+      ],
+      "explanation": "Trạng từ đứng trước động từ thường."
+    }
+  ]
+}

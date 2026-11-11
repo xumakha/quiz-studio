@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "title": "MỘT CHÚT ENGLISH",
+  "mode": "phrase_lesson",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "phrase_lesson-01",
+      "type": "phrase_lesson",
+      "subject": "HỌC THEO CỤM",
+      "phrase": "[en]take a break[/en]",
+      "meaning": "nghỉ giải lao",
+      "example": "[en]Let's take a break.[/en]",
+      "example_translation": "Chúng ta nghỉ giải lao nhé."
+    }
+  ]
+}

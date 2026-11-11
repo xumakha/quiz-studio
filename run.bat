@@ -1,5 +1,9 @@
 @echo off
 cd /d "%~dp0"
+if exist "release-history-left\QuizStudio\QuizStudio.exe" (
+  call Mo-QuizStudio.bat
+  exit /b
+)
 if exist "release-dmv\QuizStudio\QuizStudio.exe" (
   call Mo-QuizStudio.bat
   exit /b

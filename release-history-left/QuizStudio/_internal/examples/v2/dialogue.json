@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "title": "MỘT CHÚT ENGLISH",
+  "mode": "dialogue",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "dialogue-01",
+      "type": "dialogue",
+      "subject": "HOÀN THÀNH HỘI THOẠI",
+      "dialogue": [
+        {
+          "speaker": "A",
+          "text": "[en]How are you?[/en]"
+        },
+        {
+          "speaker": "B",
+          "text": "___"
+        }
+      ],
+      "missing_turn_index": 1,
+      "suggested_answers": [
+        "[en]I'm fine, thanks.[/en]"
+      ],
+      "explanation": "Một cách trả lời lời hỏi thăm."
+    }
+  ]
+}

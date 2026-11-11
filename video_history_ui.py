@@ -71,19 +71,19 @@ class VideoHistoryWindow(ctk.CTkToplevel):
                         font=("Segoe UI", 9, "bold"), relief="flat")
         style.map("History.Treeview", background=[("selected", "#e7f5f1")],
                   foreground=[("selected", ACCENT)])
-        columns = ("time", "channel", "type", "title", "caption")
+        columns = ("channel", "type", "title", "caption")
         self.table = ttk.Treeview(table_panel, columns=columns, show="tree headings", selectmode="browse",
                                   height=6, style="History.Treeview")
-        self.table.heading("#0", text="Ngày xuất", anchor="w")
-        self.table.column("#0", width=225, minwidth=205, stretch=False)
+        self.table.heading("#0", text="Ngày / Giờ xuất", anchor="w")
+        self.table.column("#0", width=200, minwidth=185, stretch=False, anchor="w")
         self.table.tag_configure("day", background="#e7f5f1", foreground=ACCENT,
                                  font=("Segoe UI", 10, "bold"))
-        for key, title, width in (("time", "Giờ xuất", 80), ("channel", "Kênh", 130),
-                                  ("type", "Loại video", 190), ("title", "Tên video", 230),
+        for key, title, width in (("channel", "Kênh", 130),
+                                  ("type", "Loại video", 150), ("title", "Tên video", 250),
                                   ("caption", "Caption", 270)):
             self.table.heading(key, text=title, anchor="w")
-            self.table.column(key, width=width, minwidth=width if key == "time" else 110,
-                              stretch=key != "time", anchor="w")
+            self.table.column(key, width=width, minwidth=110,
+                              stretch=key in ("title", "caption"), anchor="w")
         self.table.grid(row=0, column=0, sticky="nsew", padx=(1, 0), pady=(1, 0))
         vertical = ttk.Scrollbar(table_panel, orient="vertical", command=self.table.yview)
         vertical.grid(row=0, column=1, sticky="ns", pady=(1, 0))
@@ -181,8 +181,8 @@ class VideoHistoryWindow(ctk.CTkToplevel):
             for record in records:
                 summary = " ".join(record["caption"].split())
                 time = display_time(record["created_at"])
-                self.table.insert(group_id, "end", iid=record["id"], values=(
-                    time.rsplit(" ", 1)[-1] if day else time, record["tab_name"],
+                self.table.insert(group_id, "end", iid=record["id"],
+                                  text=time.rsplit(" ", 1)[-1] if day else time, values=(record["tab_name"],
                     LABELS.get(record["video_type"], record["video_type"]), record["title"], summary))
         if visible:
             self.empty_message.place_forget()

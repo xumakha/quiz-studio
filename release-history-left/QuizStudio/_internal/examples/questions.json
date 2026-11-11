@@ -1,0 +1,21 @@
+{
+  "title": "THỬ THÁCH IQ",
+  "questions": [
+    {
+      "id": "toan-01",
+      "subject": "TOÁN VUI",
+      "question": "Một tấn bằng bao nhiêu tạ?",
+      "options": ["1 tạ", "10 tạ", "100 tạ", "1000 tạ"],
+      "answer": "B",
+      "explanation": "Một tấn bằng 1000 ki-lô-gam. Một tạ bằng 100 ki-lô-gam. Vì vậy một tấn bằng 10 tạ."
+    },
+    {
+      "id": "english-01",
+      "subject": "ENGLISH QUIZ",
+      "question": "Chọn từ đúng: [en]She ... a student.[/en]",
+      "options": ["[en]am[/en]", "[en]is[/en]", "[en]are[/en]", "[en]be[/en]"],
+      "answer": "B",
+      "explanation": "Đáp án là [en]is[/en]. Chủ ngữ [en]She[/en] đi với [en]is[/en]."
+    }
+  ]
+}

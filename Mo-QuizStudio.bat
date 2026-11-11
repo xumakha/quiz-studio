@@ -1,5 +1,17 @@
 @echo off
 cd /d "%~dp0"
+if exist "release-history-left\QuizStudio\QuizStudio.exe" (
+  if exist "release-history-left\QuizStudio\_internal\_tcl_data\init.tcl" (
+    start "" "release-history-left\QuizStudio\QuizStudio.exe"
+    exit /b
+  )
+)
+if exist "release-dmv-centered\QuizStudio\QuizStudio.exe" (
+  if exist "release-dmv-centered\QuizStudio\_internal\_tcl_data\init.tcl" (
+    start "" "release-dmv-centered\QuizStudio\QuizStudio.exe"
+    exit /b
+  )
+)
 if exist "release-dmv\QuizStudio\QuizStudio.exe" (
   if exist "release-dmv\QuizStudio\_internal\_tcl_data\init.tcl" (
     start "" "release-dmv\QuizStudio\QuizStudio.exe"

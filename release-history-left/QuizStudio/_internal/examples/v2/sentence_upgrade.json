@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "title": "MỘT CHÚT ENGLISH",
+  "mode": "sentence_upgrade",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "sentence_upgrade-01",
+      "type": "sentence_upgrade",
+      "subject": "NÂNG CẤP CÂU NÓI",
+      "original": "[en]I'm tired.[/en]",
+      "alternative": "[en]I'm exhausted.[/en]",
+      "nuance": "Exhausted thể hiện mức độ mệt rất cao, tùy ngữ cảnh."
+    }
+  ]
+}

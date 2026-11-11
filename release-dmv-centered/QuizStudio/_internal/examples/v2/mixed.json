@@ -1,0 +1,156 @@
+{
+  "schema_version": 2,
+  "title": "MỘT CHÚT ENGLISH",
+  "mode": "mixed",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "multiple_choice-01",
+      "type": "multiple_choice",
+      "subject": "TRẮC NGHIỆM ABCD",
+      "question": "[en]She ... a student.[/en]",
+      "options": [
+        "[en]am[/en]",
+        "[en]is[/en]",
+        "[en]are[/en]",
+        "[en]be[/en]"
+      ],
+      "answer": "B",
+      "explanation": "Chủ ngữ She dùng is."
+    },
+    {
+      "id": "error_correction-01",
+      "type": "error_correction",
+      "subject": "TÌM LỖI SAI",
+      "question": "[en]She don't like coffee.[/en]",
+      "answer": "[en]She doesn't like coffee.[/en]",
+      "highlight": {
+        "wrong": "don't",
+        "correct": "doesn't"
+      },
+      "explanation": "Chủ ngữ She dùng doesn't."
+    },
+    {
+      "id": "fill_blank-01",
+      "type": "fill_blank",
+      "subject": "ĐIỀN TỪ",
+      "question": "[en]She ___ a student.[/en]",
+      "answer": "[en]is[/en]",
+      "explanation": "Chủ ngữ She dùng is."
+    },
+    {
+      "id": "word_order-01",
+      "type": "word_order",
+      "subject": "SẮP XẾP TỪ",
+      "tokens": [
+        {
+          "id": "t1",
+          "text": "[en]usually[/en]"
+        },
+        {
+          "id": "t2",
+          "text": "[en]I[/en]"
+        },
+        {
+          "id": "t3",
+          "text": "[en]get up[/en]"
+        }
+      ],
+      "answer_order": [
+        "t2",
+        "t1",
+        "t3"
+      ],
+      "explanation": "Trạng từ đứng trước động từ thường."
+    },
+    {
+      "id": "translation-01",
+      "type": "translation",
+      "subject": "DỊCH NHANH",
+      "source_text": "Tôi thích đọc sách.",
+      "source_language": "vi",
+      "target_language": "en",
+      "suggested_answers": [
+        "[en]I like reading books.[/en]"
+      ],
+      "explanation": "Có thể dùng like reading hoặc like to read.",
+      "show_alternatives": false
+    },
+    {
+      "id": "listening-01",
+      "type": "listening",
+      "subject": "NGHE ĐOÁN CÂU",
+      "audio_text": "[en]How are you today?[/en]",
+      "transcript": "[en]How are you today?[/en]",
+      "translation": "Hôm nay bạn thế nào?",
+      "replay_count": 1,
+      "explanation": "Câu hỏi thăm sức khỏe."
+    },
+    {
+      "id": "dialogue-01",
+      "type": "dialogue",
+      "subject": "HOÀN THÀNH HỘI THOẠI",
+      "dialogue": [
+        {
+          "speaker": "A",
+          "text": "[en]How are you?[/en]"
+        },
+        {
+          "speaker": "B",
+          "text": "___"
+        }
+      ],
+      "missing_turn_index": 1,
+      "suggested_answers": [
+        "[en]I'm fine, thanks.[/en]"
+      ],
+      "explanation": "Một cách trả lời lời hỏi thăm."
+    },
+    {
+      "id": "true_false-01",
+      "type": "true_false",
+      "subject": "ĐÚNG / SAI",
+      "statement": "[en]She are a student.[/en]",
+      "answer": false,
+      "correction": "[en]She is a student.[/en]",
+      "explanation": "She dùng is."
+    },
+    {
+      "id": "multiple_meanings-01",
+      "type": "multiple_meanings",
+      "subject": "MỘT TỪ, NHIỀU NGHĨA",
+      "word": "[en]book[/en]",
+      "senses": [
+        {
+          "phrase": "[en]a book[/en]",
+          "meaning": "một cuốn sách",
+          "example": "[en]This is a book.[/en]"
+        },
+        {
+          "phrase": "[en]book a room[/en]",
+          "meaning": "đặt phòng",
+          "example": "[en]I'd like to book a room.[/en]"
+        }
+      ]
+    },
+    {
+      "id": "sentence_upgrade-01",
+      "type": "sentence_upgrade",
+      "subject": "NÂNG CẤP CÂU NÓI",
+      "original": "[en]I'm tired.[/en]",
+      "alternative": "[en]I'm exhausted.[/en]",
+      "nuance": "Exhausted thể hiện mức độ mệt rất cao, tùy ngữ cảnh."
+    },
+    {
+      "id": "phrase_lesson-01",
+      "type": "phrase_lesson",
+      "subject": "HỌC THEO CỤM",
+      "phrase": "[en]take a break[/en]",
+      "meaning": "nghỉ giải lao",
+      "example": "[en]Let's take a break.[/en]",
+      "example_translation": "Chúng ta nghỉ giải lao nhé."
+    }
+  ]
+}

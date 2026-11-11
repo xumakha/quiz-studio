@@ -1,0 +1,28 @@
+{
+  "schema_version": 2,
+  "title": "MỘT CHÚT ENGLISH",
+  "mode": "multiple_meanings",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "multiple_meanings-01",
+      "type": "multiple_meanings",
+      "subject": "MỘT TỪ, NHIỀU NGHĨA",
+      "word": "[en]book[/en]",
+      "senses": [
+        {
+          "phrase": "[en]a book[/en]",
+          "meaning": "một cuốn sách",
+          "example": "[en]This is a book.[/en]"
+        },
+        {
+          "phrase": "[en]book a room[/en]",
+          "meaning": "đặt phòng",
+          "example": "[en]I'd like to book a room.[/en]"
+        }
+      ]
+    }
+  ]
+}

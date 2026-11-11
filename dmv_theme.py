@@ -21,12 +21,13 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     draw = ImageDraw.Draw(image)
     left, right = CONTENT_MARGIN_X, 1080-CONTENT_MARGIN_X
 
-    def text(value, rect, size=42, color=ink, bold=True):
+    def text(value, rect, size=42, color=ink, bold=True, align="left"):
         x, y, r, b = rect
         face, lines, step = fitted(draw, value, size, r-x, b-y, bold)
         top = y + (b-y-len(lines)*step)/2
         for line in lines:
-            draw.text((x, top), line, font=face, fill=color, anchor="lt")
+            draw.text(((x+r)/2 if align == "center" else x, top), line, font=face, fill=color,
+                      anchor="mt" if align == "center" else "lt")
             top += step
 
     # A narrow road edge keeps the question area clear of decoration.
@@ -45,7 +46,7 @@ def render_frame(row, number, total, title, settings, reveal=False, countdown=No
     progress = max(0, min(1, number/max(1, total)))
     if progress:
         draw.rounded_rectangle((left+26, 334, left+26+(right-left-52)*progress, 342), 4, fill="white")
-    text(title, (left, 398, right, 488), 43)
+    text(title, (left, 398, right, 488), 50, align="center")
     draw.rounded_rectangle((left, 510, right, 758), 20, fill="white")
     text("KNOWLEDGE CHECK", (left+26, 528, right-26, 566), 24, accent)
     text(row["question"], (left+26, 580, right-26, 736), 49)

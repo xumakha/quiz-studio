@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "title": "MỘT CHÚT ENGLISH",
+  "mode": "fill_blank",
+  "settings": {
+    "thinking_seconds": 5
+  },
+  "items": [
+    {
+      "id": "fill_blank-01",
+      "type": "fill_blank",
+      "subject": "ĐIỀN TỪ",
+      "question": "[en]She ___ a student.[/en]",
+      "answer": "[en]is[/en]",
+      "explanation": "Chủ ngữ She dùng is."
+    }
+  ]
+}
