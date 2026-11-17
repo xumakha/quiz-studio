@@ -63,8 +63,15 @@ class VideoTab(tk.Frame):
             setattr(self, name, value)
         self.last_output = None
         self.job_exporting = False
+        self.ai_generating = False
+        self.ai_conversation = None
         from modern_ui import build_ui
         build_ui(self, {**saved_background, **saved_settings})
+        self.update_voice_studio_summary()
+        self.voice.trace_add("write", lambda *args: self.update_voice_studio_summary())
+        self.update_openai_summary()
+        self.openai_conversation_id.trace_add("write", lambda *args: self.update_openai_summary())
+        self.openai_model.trace_add("write", lambda *args: self.update_openai_summary())
         for name in USER_DEFAULTS:
             getattr(self, name).trace_add("write", self.user_settings_changed)
         sample = "dmv_questions.json" if self.profile_id == "dmv-prep" else "questions.json"
@@ -132,8 +139,14 @@ class VideoTab(tk.Frame):
         saved = self.voice_studio_store.save(config)
         self.voice_studio_config = saved
         self.stop_preview()
-        self.voice_studio_summary.configure(text=(
-            f"Đang dùng VoiceStudio · {saved['engine']}" if saved["enabled"] else "Đang dùng giọng Google / Edge"))
+        self.update_voice_studio_summary()
+
+    def update_voice_studio_summary(self):
+        from local_voice import VOICE_ID
+        text = ("Đang dùng Adam local · CPU" if VOICES.get(self.voice.get()) == VOICE_ID else
+                f"Đang dùng VoiceStudio · {self.voice_studio_config['engine']}"
+                if self.voice_studio_config["enabled"] else "Đang dùng giọng Google / Edge")
+        self.voice_studio_summary.configure(text=text)
 
     def move_question(self, direction):
         if self.rows:
@@ -197,7 +210,8 @@ class VideoTab(tk.Frame):
         ttk.Spinbox(parent, from_=low, to=high, textvariable=variable, width=27).pack(fill="x", padx=(0, 16))
 
     def settings(self):
-        if (not self.voice_studio_config["enabled"] and any(row.get("type") == "dialogue" for row in self.rows)
+        studio = self.voice_studio_config["enabled"] and VOICES.get(self.voice.get()) != "local:adam"
+        if (not studio and any(row.get("type") == "dialogue" for row in self.rows)
                 and self.dialogue_voice_a.get() == self.dialogue_voice_b.get()):
             raise ValueError("Hội thoại: hãy chọn hai giọng khác nhau cho nhân vật A và B trong tab Giọng đọc.")
         rate, pitch, countdown, volume = self.rate.get(), self.pitch.get(), self.countdown.get(), self.music_volume.get()
@@ -209,7 +223,7 @@ class VideoTab(tk.Frame):
         width, height = (720, 1280) if self.resolution.get().startswith("720") else (1080, 1920)
         from copy import deepcopy
         config = deepcopy(self.voice_studio_config)
-        studio = config["enabled"]
+        config["enabled"] = studio
         if studio and any(row.get("type") == "dialogue" for row in self.rows) and config["dialogue_a"] == config["dialogue_b"]:
             raise ValueError("VoiceStudio: hãy chọn hai giọng khác nhau cho A và B trong cửa sổ VoiceStudio.")
         return Settings(
@@ -294,6 +308,68 @@ class VideoTab(tk.Frame):
                 self.mark_clean()
             except Exception as error:
                 messagebox.showerror("Không mở được JSON", str(error))
+
+    def open_chatgpt(self):
+        return self.choose_chatgpt_conversation()
+
+    def choose_chatgpt_conversation(self):
+        from chatgpt_ui import choose_conversation
+        return choose_conversation(self)
+
+    def update_openai_summary(self):
+        try:
+            conversation = self.host.openai_store.get(self.openai_conversation_id.get())
+            state = "Sẵn sàng" if self.host.openai_key else "Cần API key"
+            text = f"{state} · {conversation['name'][:26]}"
+        except (ValueError, sqlite3.Error):
+            text = "OpenAI API · Chưa chọn hội thoại"
+        self.openai_summary.configure(text=text)
+
+    def generate_openai_json(self):
+        if self.busy:
+            return False
+        if not self.host.openai_key or not self.openai_conversation_id.get():
+            self.open_chatgpt()
+            return False
+        prompt = self.openai_prompt.get().strip()
+        if not prompt:
+            self.status.configure(text="Nhập yêu cầu tạo nội dung trước khi bấm Tạo & điền JSON.")
+            self.openai_prompt_entry.focus_set()
+            return False
+        from openai_video import generate_video
+        conversation = self.openai_conversation_id.get()
+        if conversation in self.host.openai_inflight:
+            messagebox.showinfo("Hội thoại đang xử lý", "Một tab khác đang tạo nội dung trong hội thoại này. Hãy đợi hoàn tất.", parent=self)
+            return False
+        mode, model, channel = self.content_editor.mode, self.openai_model.get(), self.tab_name
+        key = self.host.openai_key
+        original = self.content_editor.source()
+        self.host.openai_inflight.add(conversation)
+        self.ai_conversation = conversation
+        self.ai_generating = True
+        self.fill_json_button.configure(state="disabled")
+
+        def job():
+            self.events.put(("log", "OpenAI đang tạo nội dung và JSON…"))
+            source = generate_video(self.host.openai_store, conversation, key, model, prompt, mode, channel, self.cancel)
+            return {"ai_source": source, "original": original}
+
+        self.start_job(job)
+        return True
+
+    def apply_generated_json(self, source):
+        parse_questions(source)
+        self.content_editor.drafts[self.content_editor.mode] = self.content_editor.source()
+        self.text.edit_separator()
+        autoseparators = self.text.cget("autoseparators")
+        self.text.configure(autoseparators=False)
+        try:
+            self.content_editor.write(source)
+        finally:
+            self.text.configure(autoseparators=autoseparators)
+            self.text.edit_separator()
+        self.host.update_tab(self)
+        self.status.configure(text="Đã tạo và điền JSON, cập nhật xem trước. Bấm Xuất video khi sẵn sàng. Ctrl+Z để hoàn tác.")
 
     def save_json(self):
         if not self.validate():
@@ -826,8 +902,21 @@ class VideoTab(tk.Frame):
                     self.host.refresh_video_history()
                     if warning and not self.closing:
                         messagebox.showwarning("Chưa lưu được lịch sử video", warning, parent=self.winfo_toplevel())
+                if kind == "done" and self.ai_generating:
+                    if self.cancel.is_set() or self.closing:
+                        text = "Đã hủy nhận nội dung. Có thể nạp lại JSON đã tạo từ hội thoại."
+                    elif self.content_editor.source() != text["original"]:
+                        text = "JSON đã tạo được lưu trong hội thoại. Bạn đã sửa bản nháp trong lúc chờ; bấm Đổi hội thoại → Nạp JSON gần nhất để dùng."
+                    else:
+                        self.apply_generated_json(text["ai_source"])
+                        text = "Đã tự tạo và điền JSON, cập nhật xem trước. Bấm Xuất video khi sẵn sàng."
                 self.status.configure(text=text)
                 if kind != "log":
+                    if self.ai_generating:
+                        self.host.openai_inflight.discard(self.ai_conversation)
+                        self.ai_generating = False
+                        self.ai_conversation = None
+                        self.fill_json_button.configure(state="normal")
                     self.busy = False
                     self.host.release_output(self)
                     self.progress.stop()
@@ -849,7 +938,7 @@ class VideoTab(tk.Frame):
                         guidance = ("\n\nKiểm tra Internet rồi thử lại. Nếu giọng Edge tiếp tục lỗi, "
                                     "vào Giọng đọc và chọn Việt • Google (HTTP) hoặc English • Google (HTTP) "
                                     "cho đúng ngôn ngữ (kiểm tra cả giọng chính và giọng tiếng Anh). "
-                                    "Bạn cũng có thể bỏ chọn Tạo giọng đọc để xuất offline.") if "(TTS)" in text and "VoiceStudio" not in text else ""
+                                    "Bạn cũng có thể bỏ chọn Tạo giọng đọc để xuất offline.") if "(TTS)" in text and "VoiceStudio" not in text and "Adam local" not in text else ""
                         messagebox.showerror("Tác vụ thất bại", text + guidance)
         except queue.Empty:
             pass
@@ -884,6 +973,10 @@ class App(tk.Tk):
         self.data_dir = Path(data_dir) if data_dir is not None else data_directory()
         self.history_store = VideoHistoryStore(self.data_dir)
         self.history_window = None
+        from openai_video import ConversationStore
+        self.openai_store = ConversationStore(self.data_dir)
+        self.openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+        self.openai_inflight = set()
         self.profiles = WorkspaceProfiles(self.data_dir)
         self.tabs = []
         self.active_tab = None
@@ -1043,7 +1136,7 @@ class App(tk.Tk):
         if outgoing is not tab:
             if outgoing:
                 outgoing.stop_preview()
-                if outgoing.busy and not outgoing.job_exporting:
+                if outgoing.busy and not outgoing.job_exporting and not outgoing.ai_generating:
                     outgoing.cancel.set()
                 outgoing.pack_forget()
             self.active_tab = tab
@@ -1153,7 +1246,20 @@ class App(tk.Tk):
 
 
 if __name__ == "__main__":
-    if "--self-check" in sys.argv:
+    if "--check-local-voice" in sys.argv:
+        report = Path(sys.argv[sys.argv.index("--check-local-voice") + 1]).resolve()
+        try:
+            from local_voice import synthesize
+            import wave
+            target = report.with_suffix(".wav")
+            synthesize("Xin chào, đây là giọng Adam chạy trên máy.", target)
+            with wave.open(str(target), "rb") as audio:
+                duration = audio.getnframes() / audio.getframerate()
+            report.write_text(json.dumps({"ok": True, "duration": duration, "audio": str(target)}), encoding="utf-8")
+        except Exception as error:
+            report.write_text(json.dumps({"ok": False, "error": str(error)}), encoding="utf-8")
+            sys.exit(1)
+    elif "--self-check" in sys.argv:
         report = Path(sys.argv[sys.argv.index("--self-check") + 1])
         try:
             check_data = tempfile.TemporaryDirectory(prefix="quiz-self-check-")
@@ -1168,6 +1274,15 @@ if __name__ == "__main__":
             from content_timeline import plan_item
             from content_renderer import render_scene
             assert app.content_editor.mode == DEFAULT_MODE
+            assert not app.openai_panel.winfo_manager()
+            from openai_video import output_schema
+            local_conversation = host.openai_store.create("Hội thoại kiểm tra", "Giải thích ngắn gọn.")
+            app.openai_conversation_id.set(local_conversation["id"])
+            assert "Cần API key" in app.openai_summary.cget("text") or host.openai_key
+            connection_window = app.open_chatgpt()
+            assert connection_window.title() == "Kết nối OpenAI API"
+            connection_window.destroy()
+            assert output_schema(DEFAULT_MODE)["properties"]["mode"]["enum"] == [DEFAULT_MODE]
             checked_settings = Settings(speech=False, width=180, height=320)
             for kind in REGISTRY:
                 checked_title, checked_rows = parse_questions(json.dumps(sample_document(kind)))
@@ -1220,12 +1335,14 @@ if __name__ == "__main__":
             assert len(host.tabs) == 5 and host.active_tab is host.tabs[0]
             assert host.tabs[1].tab_name == "Easy Prep đã lưu"
             assert host.history_store.load() == [checked_history]
+            assert host.active_tab.openai_conversation_id.get() == local_conversation["id"]
+            assert host.openai_store.get(local_conversation["id"])["name"] == "Hội thoại kiểm tra"
             for index, tab in enumerate(host.tabs):
                 assert tab.brand.get() == f"PROFILE {index}"
                 assert tab.countdown.get() == index + 3
             host.close()
             check_data.cleanup()
-            report.write_text(json.dumps({"ok": True, "questions": 2, "default_mode": DEFAULT_MODE, "content_types": len(REGISTRY), "ffmpeg": ffmpeg, "progress_and_output_button": True, "workspace_tabs": True, "profile_persistence": True, "video_history": True}), encoding="utf-8")
+            report.write_text(json.dumps({"ok": True, "questions": 2, "default_mode": DEFAULT_MODE, "content_types": len(REGISTRY), "ffmpeg": ffmpeg, "progress_and_output_button": True, "workspace_tabs": True, "profile_persistence": True, "video_history": True, "openai_configuration": True}), encoding="utf-8")
         except Exception as error:
             report.write_text(json.dumps({"ok": False, "error": str(error)}), encoding="utf-8")
             sys.exit(1)

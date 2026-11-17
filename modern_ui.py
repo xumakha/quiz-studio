@@ -64,6 +64,9 @@ def build_ui(app, saved):
     app.video_template = tk.StringVar(master=app, value="Tự động theo môn học")
     app.brand = tk.StringVar(master=app, value="QUIZ STUDIO")
     app.ending_text = tk.StringVar(master=app)
+    app.openai_model = tk.StringVar(master=app)
+    app.openai_conversation_id = tk.StringVar(master=app)
+    app.openai_prompt = tk.StringVar(master=app)
     app.watermark_enabled = tk.BooleanVar(master=app, value=True)
     app.logo_watermark_enabled = tk.BooleanVar(master=app, value=True)
     app.left_logo_enabled = tk.BooleanVar(master=app, value=True)
@@ -285,6 +288,25 @@ def build_ui(app, saved):
     label(format_card, "30 fps · MP4 · Shorts / TikTok / Reels", 10, MUTED).pack(anchor="w", padx=12, pady=(0, 12))
 
     center = panel(1, "Nội dung video", "file-json")
+    # Temporarily hidden; keep controls and saved settings available for re-enabling.
+    app.openai_panel = chatgpt = box(center, BG, corner_radius=8)
+    chatgpt_heading = box(chatgpt)
+    chatgpt_heading.pack(fill="x", padx=10, pady=(8, 4))
+    app.openai_summary = label(chatgpt_heading, "OpenAI API · Chưa kết nối", 11, bold=True)
+    app.openai_summary.pack(side="left")
+    button(chatgpt_heading, "Đổi hội thoại", app.choose_chatgpt_conversation, symbol="edit", height=26, width=116).pack(side="right")
+    app.openai_prompt_entry = ctk.CTkEntry(chatgpt, textvariable=app.openai_prompt,
+        placeholder_text="Ví dụ: Tạo 5 câu về thì hiện tại đơn, có giải thích và caption", height=34,
+        fg_color="white", border_color=LINE, text_color=INK)
+    app.openai_prompt_entry.pack(fill="x", padx=10)
+    app.openai_prompt_entry.bind("<Return>", lambda event: app.generate_openai_json())
+    chatgpt_actions = box(chatgpt)
+    chatgpt_actions.pack(fill="x", padx=10, pady=8)
+    app.chatgpt_button = button(chatgpt_actions, "Kết nối OpenAI", app.open_chatgpt, symbol="settings", width=145, height=32)
+    app.chatgpt_button.pack(side="left")
+    app.fill_json_button = button(chatgpt_actions, "Tạo & điền JSON", app.generate_openai_json, primary=True, symbol="file-json", width=150, height=32)
+    app.fill_json_button.pack(side="left", padx=(8, 0))
+    label(chatgpt, "Dùng dạng video đang chọn · Tự giữ ngữ cảnh hội thoại", 10, MUTED).pack(anchor="w", padx=10, pady=(0, 8))
     from content_editor import ContentEditor
     app.content_editor = ContentEditor(app, center)
     app.question_count = ttk.Label(center.heading, foreground=MUTED)

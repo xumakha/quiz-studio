@@ -1,5 +1,17 @@
 @echo off
 cd /d "%~dp0"
+if exist "release-openai\QuizStudio\QuizStudio.exe" (
+  if exist "release-openai\QuizStudio\_internal\_tcl_data\init.tcl" (
+    start "" "release-openai\QuizStudio\QuizStudio.exe"
+    exit /b
+  )
+)
+if exist "release-chatgpt\QuizStudio\QuizStudio.exe" (
+  if exist "release-chatgpt\QuizStudio\_internal\_tcl_data\init.tcl" (
+    start "" "release-chatgpt\QuizStudio\QuizStudio.exe"
+    exit /b
+  )
+)
 if exist "release-history-left\QuizStudio\QuizStudio.exe" (
   if exist "release-history-left\QuizStudio\_internal\_tcl_data\init.tcl" (
     start "" "release-history-left\QuizStudio\QuizStudio.exe"

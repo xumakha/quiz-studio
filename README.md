@@ -5,14 +5,14 @@ App dùng chung một bộ mã nguồn và tự nhận hệ điều hành. Windo
 | Thao tác | Windows | macOS |
 | --- | --- | --- |
 | Khởi động | `run.bat` | `run.command` |
-| Đóng gói bản mới | `build.bat` → `release-history/QuizStudio/QuizStudio.exe` | `build-macos.command` → `.app` |
+| Đóng gói bản mới | `build.bat` → `release-openai/QuizStudio/QuizStudio.exe` | `build-macos.command` → `.app` |
 | Môi trường Python | `.venv` | `.venv-macos` |
 
 Khi chuyển mã nguồn giữa hai máy, cài thư viện riêng bằng launcher trên mỗi máy; không sao chép môi trường Python. Bản `.exe`/`.app` cũ không tự cập nhật theo mã nguồn: cần đóng gói lại trên hệ điều hành tương ứng để dùng các sửa đổi mới. `run.bat` ưu tiên mở bản `.exe` đã có; nếu muốn dùng mã nguồn mới trực tiếp, chạy `.venv\Scripts\python.exe app.py` sau khi cài thư viện.
 
-Sau khi clone, cài Python 3.11 trở lên rồi chạy `run.bat` để cài thư viện và mở app từ mã nguồn nếu chưa có bản đóng gói. Chạy `build.bat` để tạo bản `.exe` tại `release-history/QuizStudio`.
+Sau khi clone, cài Python 3.11 trở lên rồi chạy `run.bat` để cài thư viện và mở app từ mã nguồn nếu chưa có bản đóng gói. Chạy `build.bat` để tạo bản `.exe` tại `release-openai/QuizStudio`.
 
-Nhấp đúp **Mo-QuizStudio.bat** để mở bản mới nhất tại `release-history/QuizStudio/QuizStudio.exe`. Khi chuyển sang máy khác, sao chép cả thư mục `release-history/QuizStudio`, bao gồm `_internal`. Không chạy file trong thư mục `build-tabs`: đó là file đóng gói trung gian.
+Nhấp đúp **Mo-QuizStudio.bat** để mở bản mới nhất tại `release-openai/QuizStudio/QuizStudio.exe`. Khi chuyển sang máy khác, sao chép cả thư mục `release-openai/QuizStudio`, bao gồm `_internal`. Không chạy file trong thư mục `build-tabs`: đó là file đóng gói trung gian.
 
 ## Chạy trên macOS
 
@@ -28,7 +28,27 @@ Cài đặt và thư viện media trên Mac được lưu tại `~/Library/Appli
 
 Chạy kiểm tra: `.venv-macos/bin/python -m unittest discover -v`.
 
+## Giọng Adam chạy trên máy
+
+Chạy `Cai-Giong-local.bat` để cài bộ chạy riêng và tải VieNeu-TTS v3 Nano lần đầu (model khoảng 280 MB, cần ít nhất 2 GiB trống cho bộ cài). Sau khi cài, việc tạo giọng chạy offline bằng CPU, không cần tài khoản, API key hay file mẫu. Bộ cài tạo sẵn `.vieneu-runtime/adam-preview.wav` để nghe thử.
+
+Mở `Mo-Giong-local.bat`, vào **Tùy chỉnh video → Giọng đọc → Giọng đọc chính**, chọn **Việt • Nam — Adam (Local)** rồi bấm nghe thử hoặc xuất video. Tốc độ và cao độ dùng các thanh chỉnh có sẵn; giọng cho đoạn `[en]…[/en]` vẫn dùng lựa chọn tiếng Anh của tab. Chọn Adam local ưu tiên bộ chạy này cho tab, kể cả khi cấu hình VoiceStudio đã bật; chọn lại giọng khác để tiếp tục dùng cấu hình VoiceStudio trước đó.
+
+Đây là preset Adam của **VieNeu**, có thể khác chất giọng Adam trên Saydi. Nano là model thử nghiệm, xuất audio 24 kHz và đôi khi đọc chưa chính xác; nên nghe trước khi dùng. [Thẻ model chính thức](https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Nano) công bố giấy phép Apache 2.0. Model và thư viện nằm trong `.vieneu-runtime`, tách khỏi môi trường Python của app; cần mang theo thư mục này khi chuyển bản Windows sang máy khác. Không cần cài OmniVoice/VoiceStudio để dùng giọng này.
+
+Đóng gói bản riêng: `.venv\Scripts\python.exe -m PyInstaller --noconfirm --distpath release-adam-local --workpath build-adam-local QuizStudio.spec`. Trên macOS, cài môi trường app như hướng dẫn bên trên rồi chạy `.venv-macos/bin/python setup_local_voice.py` và đóng gói lại trên Mac.
+
 ## Tạo video
+
+Phần kết nối OpenAI/ChatGPT và tự tạo JSON hiện được **tạm ẩn khỏi giao diện**. Cấu hình và lịch sử hội thoại vẫn được giữ để bật lại sau. Các đoạn hướng dẫn OpenAI bên dưới áp dụng khi phần này được bật lại; hiện có thể nhập/mở JSON và xuất video như bình thường.
+
+Trong **Nội dung video**, bấm **Kết nối OpenAI**, nhập OpenAI API key, chọn model hỗ trợ Structured Outputs (mặc định `gpt-4.1-mini`), rồi bấm **Kiểm tra & kết nối**. Lần đầu app tự tạo hội thoại theo tên tab sau khi kiểm tra key thành công; không cần bấm Tạo hội thoại trước. Có thể sửa tên và hướng dẫn trước khi kết nối, hoặc chọn hội thoại đã lưu. Nút **Tạo hội thoại** dùng khi muốn tạo thêm hội thoại riêng. App kiểm tra key và quyền truy cập model qua API. Mỗi tab nhớ riêng hội thoại và model; **Đổi hội thoại** mở lại hộp chọn bất cứ lúc nào. Đây là hội thoại riêng trong app, không dùng link hoặc lịch sử chatgpt.com.
+
+Chọn dạng video, nhập yêu cầu (ví dụ “Tạo 5 câu về thì hiện tại đơn, giải thích tiếng Việt và caption”), rồi bấm **Tạo & điền JSON**. App gọi [Responses API với Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs), tự kiểm tra JSON, điền editor và cập nhật xem trước; không cần sao chép câu trả lời. Bấm **Xuất video** để tạo MP4. **Ctrl+Z** trong editor hoàn tác lần điền. JSON lỗi hoặc lỗi API giữ nguyên bản nháp. Nếu sửa bản nháp trong lúc AI xử lý, kết quả được lưu trong hội thoại; dùng **Đổi hội thoại → Nạp JSON gần nhất** để nạp khi sẵn sàng.
+
+Hội thoại, hướng dẫn và các lượt tạo hợp lệ lưu trong `openai_conversations.sqlite3` dưới thư mục dữ liệu người dùng. Các lần tạo sau gửi lại ngữ cảnh của hội thoại đã chọn; mở lại app vẫn giữ lịch sử và có thể nạp lại JSON gần nhất. Chuyển tab không hủy tác vụ AI; hai tab dùng cùng hội thoại phải đợi nhau để giữ đúng thứ tự ngữ cảnh. **Hủy tác vụ** bỏ nhận kết quả khi phản hồi về, không bảo đảm hủy yêu cầu đã gửi tới API. Khi hết hạn mức, timeout hoặc lỗi kết nối, app không tự gửi lại để tránh phát sinh yêu cầu trùng.
+
+API key chỉ giữ trong bộ nhớ của phiên app, không ghi vào cài đặt hay lịch sử. Có thể đặt biến môi trường `OPENAI_API_KEY` để tự nạp key khi mở lại. Nhập key trực tiếp trong app, không gửi qua chat hoặc lưu trong mã nguồn. Việc tạo nội dung dùng hạn mức API của tài khoản bạn. Chạy kiểm tra phần API bằng `.venv\Scripts\python.exe -m unittest test_openai_video test_app_openai -v`; kiểm tra tự động mô phỏng phản hồi API, không phát sinh phí.
 
 Mỗi lần mở app có sẵn năm tab theo thứ tự **Một chút English**, **Easy Prep**, **ASVAB-Prep**, **easy-pass.app**, **dmv-prep.org**, và chọn tab đầu tiên. Mỗi tab tự nhớ riêng giọng đọc, nền, nhạc, logo, ảnh kết thúc, câu kết và các tùy chỉnh video, kể cả sau khi đóng rồi mở lại app. Khi nâng cấp, cài đặt đã lưu của bản cũ được giữ cho tab **Một chút English**. Bốn tab còn lại bắt đầu với thông số cơ bản, chữ watermark theo tên tab và câu kết để trống; hãy chọn ảnh và chỉnh thông số riêng cho từng kênh. Tab **easy-pass.app** dùng giao diện **easy-pass.app · Xanh nhạt**, nền màu #D9EDF7 mặc định. Tab **dmv-prep.org** dùng mẫu **dmv-prep.org · Luyện thi lái xe**, màu chủ đạo **#4471FD**, bố cục làn đường và thẻ câu hỏi riêng. JSON mẫu: `examples/dmv_questions.json`.
 
@@ -81,7 +101,7 @@ Thêm `"caption": "Nội dung đăng video\n#quiz"` ở cấp ngoài cùng, cùn
 - `engine.py`, `video_themes.py`, `video_classic.py`: giọng đọc, xuất MP4 và các mẫu video.
 - `preferences.py`, `workspace_profiles.py`: lưu cài đặt riêng theo tab và quản lý thư viện media dùng chung.
 - `requirements.txt`, `.venv`: thư viện chạy từ mã nguồn; `run.bat` hỗ trợ khởi động.
-- `build.bat`: đóng gói bản mới vào `release-history`; đóng app trước khi đóng gói lại.
+- `build.bat`: đóng gói bản mới vào `release-openai`; đóng app trước khi đóng gói lại.
 - `test_*.py`: kiểm tra dữ liệu, render, chọn mẫu, watermark và lưu ảnh nền.
 
 Chạy kiểm tra: `.venv\Scripts\python.exe -m unittest discover -v`. Chạy từ mã nguồn cần Python 3.11 trở lên.

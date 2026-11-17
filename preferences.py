@@ -21,6 +21,7 @@ USER_DEFAULTS = {
     "logo_watermark_enabled": True,
     "music_volume": 12, "reveal": False,
     "ending_text": DEFAULT_ENDING_TEXT,
+    "openai_model": "gpt-4.1-mini", "openai_conversation_id": "", "openai_prompt": "",
     "left_logo_enabled": True, "right_chibi_enabled": True,
 }
 

@@ -74,6 +74,7 @@ class AppBackgroundTests(unittest.TestCase):
                       "video_template": "Tiếng Anh · Xanh sáng", "brand": "Mọt Chữ English",
                       "watermark_enabled": False, "read_options": False, "read_explanation": False, "speech": False,
                       "music_volume": 27, "reveal": True, "ending_text": "Cảm ơn bạn đã xem, hẹn gặp lại!",
+                      "openai_model": "gpt-4.1-mini", "openai_conversation_id": "my-local-conversation", "openai_prompt": "Tạo 5 câu",
                       "left_logo_enabled": False, "right_chibi_enabled": False, "logo_watermark_enabled": True}
             self.assertEqual(set(chosen), set(USER_DEFAULTS))
             host = App(data_dir=root / "data")

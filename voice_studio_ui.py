@@ -61,8 +61,10 @@ class VoiceStudioWindow(ctk.CTkToplevel):
         self.poll_timer = self.after(100, self.poll)
 
     def page(self, title):
-        panel = ctk.CTkScrollableFrame(self.pages, fg_color="white", corner_radius=0)
-        self.pages.add(panel, text=title)
+        container = ttk.Frame(self.pages)
+        panel = ctk.CTkScrollableFrame(container, fg_color="white", corner_radius=0)
+        panel.pack(fill="both", expand=True)
+        self.pages.add(container, text=title)
         return panel
 
     def text(self, parent, title, value="", height=85):

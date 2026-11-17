@@ -22,14 +22,14 @@ MODEL_REPO = "k2-fsa/OmniVoice"
 MODEL_REVISION = "c5fdb5ccb189668d56333f77ba2629f4cd7535f4"
 
 
-def ca_bundle():
+def ca_bundle(root=ROOT):
     pem = Path(certifi.where()).read_text(encoding="ascii")
     if sys.platform == "win32":
         for store in ("ROOT", "CA"):
             for certificate, encoding, _ in ssl.enum_certificates(store):
                 if encoding == "x509_asn":
                     pem += "\n" + ssl.DER_cert_to_PEM_cert(certificate)
-    path = ROOT / "system-ca.pem"
+    path = root / "system-ca.pem"
     path.write_text(pem, encoding="ascii")
     return path
 

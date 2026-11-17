@@ -18,7 +18,8 @@ if tk_root is None:
 os.environ['TCL_LIBRARY'] = str(tk_root / 'tcl/tcl8.6')
 os.environ['TK_LIBRARY'] = str(tk_root / 'tcl/tk8.6')
 
-datas = [('examples', 'examples'), ('assets', 'assets'), ('docs', 'docs')]
+datas = [('examples', 'examples'), ('assets', 'assets'), ('docs', 'docs'),
+         ('local_voice_worker.py', '.')]
 binaries = []
 hiddenimports = []
 tmp_ret = collect_all('customtkinter')

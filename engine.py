@@ -30,6 +30,7 @@ edge_tts.communicate._SSL_CTX.load_default_certs()
 VOICES = {
     "Việt • Nữ — Hoài My": "vi-VN-HoaiMyNeural",
     "Việt • Nam — Nam Minh": "vi-VN-NamMinhNeural",
+    "Việt • Nam — Adam (Local)": "local:adam",
     "English • Female — Jenny": "en-US-JennyNeural",
     "English • Male — Guy": "en-US-GuyNeural",
     "Việt • Google (HTTP)": "google:vi",
@@ -212,6 +213,18 @@ class Renderer:
         return stderr.decode("utf-8", errors="replace")
 
     async def _synthesize_speech(self, text, voice, path):
+        if voice == "local:adam":
+            from local_voice import LocalVoiceError, synthesize
+            path.unlink(missing_ok=True)
+            try:
+                await asyncio.to_thread(synthesize, text, path, check=self.check)
+            except LocalVoiceError as error:
+                path.unlink(missing_ok=True)
+                raise SpeechError(f"Adam local (TTS): {error}") from error
+            except BaseException:
+                path.unlink(missing_ok=True)
+                raise
+            return
         for attempt in range(1, 4):
             self.check()
             # A failed request can leave partial audio. Each attempt starts fresh.
@@ -296,6 +309,8 @@ class Renderer:
         cache.mkdir(parents=True, exist_ok=True)
         # Keep older layouts' cache, but regenerate prep audio with punctuation pacing.
         identity = ["speech-prep-pacing-v2" if paced else "speech-preroll-v1", english_layout, text, self.settings.voice, self.settings.english_voice, self.settings.rate, self.settings.pitch]
+        if self.settings.voice == "local:adam":
+            identity.append("vieneu-nano-adam-3.8.4-aba295eb-seed42")
         if self.settings.voice_studio.get("enabled"):
             identity.append(self.settings.voice_studio)
         key = hashlib.sha256(json.dumps(identity, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
@@ -318,15 +333,15 @@ class Renderer:
                 continue
             voice = self.settings.english_voice if english_layout or english_part else self.settings.voice
             studio = self.settings.voice_studio.get("enabled")
-            path = directory / f"speech-{target.stem}-{index}{'.wav' if studio else '.mp3'}"
+            path = directory / f"speech-{target.stem}-{index}{'.wav' if studio or voice == 'local:adam' else '.mp3'}"
             if studio:
                 role = voice.split(":", 1)[1] if voice.startswith("voicestudio:") else (
                     "english" if english_layout or english_part else "main")
                 await self._voice_studio_part(plain(part), role, path)
             else:
                 await self._synthesize_speech(plain(part), voice, path)
-            if not studio and voice.startswith("google:"):
-                adjusted = path.with_suffix(".wav")
+            if not studio and (voice.startswith("google:") or voice == "local:adam"):
+                adjusted = path.with_name(f"{path.stem}-adjusted.wav")
                 # Pitch is mapped from the UI range to +/- 6 semitones for Google;
                 # atempo compensates pitch-induced speed before applying rate.
                 factor = 2 ** (self.settings.pitch / 100)

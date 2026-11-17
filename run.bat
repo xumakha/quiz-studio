@@ -1,5 +1,13 @@
 @echo off
 cd /d "%~dp0"
+if exist "release-openai\QuizStudio\QuizStudio.exe" (
+  call Mo-QuizStudio.bat
+  exit /b
+)
+if exist "release-chatgpt\QuizStudio\QuizStudio.exe" (
+  call Mo-QuizStudio.bat
+  exit /b
+)
 if exist "release-history-left\QuizStudio\QuizStudio.exe" (
   call Mo-QuizStudio.bat
   exit /b
